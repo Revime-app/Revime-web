@@ -1,0 +1,2326 @@
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+  // Partial indexes are behind a preview flag in Prisma 7.9.1, verified by
+  // removing this line and watching `prisma validate` reject Offer's @@unique.
+  // Not optional: Offer's uniqueness is narrowed to live offers only.
+  previewFeatures = ["partialIndexes"]
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Mode {
+  CLIENT
+  REPAIRER
+}
+
+enum RepairerKind {
+  PRO
+  INDIVIDUAL
+}
+
+enum VerificationLevel {
+  NONE
+  BASIC
+  IDENTITY
+  BUSINESS
+}
+
+enum VerificationChannel {
+  SMS
+  EMAIL
+  // Piece 5. A registry lookup is not a message: nothing is dispatched and nothing
+  // is billed, so SENT is never written for this channel and `checkRegistryLimit`
+  // counts differently from `checkLimit`. See the design's §4.6.
+  REGISTRY
+}
+
+enum VerificationOutcome {
+  SENT      // dispatched, and therefore billed
+  APPROVED
+  REJECTED  // wrong code
+  BLOCKED   // our limiter, Fraud Guard or geo permissions refused: nothing billed
+  FAILED    // provider or transport error
+}
+
+enum DemandeMode {
+  OFFERS
+  BUDGET
+}
+
+enum DemandeStatus {
+  OPEN
+  IN_PROGRESS
+  DONE
+  CANCELLED
+}
+
+enum PartsPreference {
+  UNKNOWN
+  ORIGINAL
+  COMPATIBLE
+  CLIENT_SUPPLIED
+}
+
+enum OfferStatus {
+  SENT
+  ACCEPTED
+  REJECTED
+  WITHDRAWN
+}
+
+enum TravelMode {
+  WORKSHOP
+  HOME
+}
+
+enum CommandeStatus {
+  PENDING_PAYMENT
+  PAID
+  ABANDONED
+  // P5. A DISPOSITION, not a step: `step` stays where the lifecycle died, so a
+  // refund at REPAIR_STARTED and one at RETURN_SENT remain distinguishable —
+  // they have different physical consequences. A CommandeStep.REFUNDED would
+  // enter stepsFor()/nextStepFor(), which treat that enum as an ordered
+  // sequence, and would erase the distinction. See the P5 spec §4.1.
+  REFUNDED
+}
+
+/// The approved prototype's escrow lifecycle (`repareme-web/src/order.tsx:5-20`).
+/// PARCEL uses all seven members; HOME and WORKSHOP skip the two parcel ones.
+/// The ORDER lives in `packages/shared` (`stepsFor`), which is the only place that
+/// knows the sequence — this enum is just the set of legal values.
+enum CommandeStep {
+  PAID
+  PARCEL_SENT
+  PARCEL_RECEIVED
+  REPAIR_STARTED
+  REPAIR_DONE
+  // The return legs, added by P4. P3 shipped seven parcel steps and none of them
+  // was the device going back to the client. They sit BEFORE AWAITING_VALIDATION
+  // deliberately: the client must hold the repaired device before he is asked to
+  // release funds, which is the whole of escrow.
+  RETURN_SENT
+  RETURN_RECEIVED
+  AWAITING_VALIDATION
+  RELEASED
+}
+
+/// Which side of a commande a row belongs to. Named to match the TypeScript
+/// `CommandeRole` in commande.schemas.ts: same two values meaning the same thing
+/// in two namespaces, so a mapping between them reads as an identity rather than
+/// a translation.
+enum CommandeRole {
+  CLIENT
+  REPAIRER
+}
+
+enum DeliveryMode {
+  HOME      // « À domicile », le réparateur se déplace
+  WORKSHOP  // « Dépôt en atelier »
+  PARCEL    // « Envoi par colis »
+}
+
+/// Livraison Boxtal (spec §4). The client's choice at payment: relay-to-relay or door delivery.
+enum ParcelOption {
+  RELAY
+  HOME
+}
+
+enum ExecutionDelayPreference {
+  IMMEDIATE
+  WAIT_14_DAYS
+}
+
+enum ConsentProofKind {
+  CGU_ACCEPTANCE
+  WITHDRAWAL_WAIVER_IMMEDIATE
+  WITHDRAWAL_WAIVER_WAIT_14_DAYS
+  /// V9 B1 (`DEC9-05` (4)): the privacy-policy box, its own proof beside the CGU one.
+  PRIVACY_ACCEPTANCE
+}
+
+/// V9 B1 (`DEC9-04` (6)): how an account was created, from its first login row.
+enum SignupMethod {
+  APPLE
+  GOOGLE
+  EMAIL
+}
+
+enum ShipmentLeg {
+  OUTBOUND  // client → réparateur
+  RETURN    // réparateur → client
+}
+
+/// Vendor-side lifecycle of ONE leg. Not a CommandeStep: the escrow steps stay the parties'.
+enum ShipmentStatus {
+  PENDING
+  ORDERED
+  LABEL_READY
+  IN_TRANSIT
+  DELIVERED
+  CANCELLED
+  FAILED
+}
+
+enum NotificationType {
+  OFFER_RECEIVED
+  OFFER_ACCEPTED
+  OFFER_DECLINED
+  MESSAGE_RECEIVED
+  COMMANDE_STEP
+  FUNDS_RELEASED
+  COMMANDE_REFUNDED
+  /// CF-43, migration 24. A checkout session that expired with the commande still
+  /// unpaid. Deliberately not named REFUSED or DECLINED: the gateway takes cards
+  /// only and cards settle synchronously, so no decline signal reaches us and a
+  /// name implying one would invite copy asserting something nobody observed.
+  /// Keep in step with `notificationTypeSchema` in packages/shared.
+  PAYMENT_ABANDONED
+  /// CF-16 / CF-17, migration 30. A demande a réparateur quoted on changed, or was withdrawn
+  /// by its author. Keep in step with `notificationTypeSchema` in packages/shared.
+  DEMANDE_UPDATED
+  DEMANDE_WITHDRAWN
+  // Stage 6 piece C1, migration 34. An operator removed a demande a réparateur had quoted
+  // on. Sent to the RÉPARATEUR, not the author (spec decision 4), and DELIBERATELY NOT a
+  // reuse of DEMANDE_WITHDRAWN, whose copy says « Le client a retiré … » — which would tell
+  // the réparateur the client did it. Fires on DELETE only: a notification cannot be
+  // retracted, so notifying on the reversible hide would be false the moment it is undone.
+  DEMANDE_MODERATED
+  /// Livraison Boxtal, migration 20260904020000 (the SQL lands with the rest of that migration).
+  /// Six carrier outcomes, one per user-visible event; `step` carries the LEG (PARCEL_SENT =
+  /// outbound, RETURN_SENT = return). Keep in step with `notificationTypeSchema` in packages/shared.
+  PARCEL_LABEL_READY
+  PARCEL_SHIPPED
+  PARCEL_OUT_FOR_DELIVERY
+  PARCEL_AT_PICKUP_POINT
+  PARCEL_DELIVERED
+  PARCEL_INCIDENT
+  /// CF4-E, migration 20260929010000. Keep in step with notificationTypeSchema.
+  DISPUTE_OPENED
+  DISPUTE_DISMISSED
+  IDENTITY_VERIFIED
+  IDENTITY_DOCUMENTS_REQUIRED
+  VERIFICATION_REVOKED
+  /// CF4-D, migration 20260929020000. The admin refunded only part of the commande.
+  /// Keep in step with `notificationTypeSchema` in packages/shared.
+  COMMANDE_PARTIALLY_REFUNDED
+  /// CF4-H, migration 20260930040000. Private quote request lifecycle.
+  /// Keep in step with `notificationTypeSchema` in packages/shared.
+  QUOTE_REQUESTED
+  QUOTE_DECLINED
+  QUOTE_EXPIRED
+  QUOTE_REFUSED
+  /// CF4-I, migration 20260930050000. Client cancellation lifecycle. REQUESTED and WITHDRAWN
+  /// go to the RÉPARATEUR only; REFUSED goes to both, worded per recipient. Keep in step with
+  /// `notificationTypeSchema` in packages/shared.
+  CANCELLATION_REQUESTED
+  CANCELLATION_WITHDRAWN
+  CANCELLATION_REFUSED
+  /// CF4-J §4.4, migration 20261001010000. REVIME wrote in a confidential dispute space.
+  DISPUTE_MESSAGE
+  /// CF5-07, migration 20261003020000. Business verification lifecycle.
+  /// Keep in step with `notificationTypeSchema` in packages/shared.
+  BUSINESS_VERIFIED
+  BUSINESS_REFUSED
+  BUSINESS_DOCUMENTS_REQUIRED
+  FISCAL_DECLARATION_REQUIRED
+  DAC7_ANNUAL_RECAP_SENT
+  // V8 B2. A validated order's payout is held (no « Virements » yet, or fiscal info missing).
+  PAYOUT_WAITING
+  // V8 E1. The 3- and 8-day « finish your setup » reminders.
+  SETUP_REMINDER
+}
+
+/// CF4-H, migration 20260930040000. Why a private quote request is CANCELLED.
+/// Keep in step with `quoteClosedReasonSchema` in packages/shared.
+enum QuoteClosedReason {
+  DECLINED
+  EXPIRED
+  QUOTE_REFUSED
+  CANCELLED_BY_CLIENT
+}
+
+/// CF4-I, migration 20260930050000. A `CancellationRequest` row's lifecycle.
+/// Keep in step with `cancellationRequestStatusSchema` in packages/shared.
+enum CancellationRequestStatus {
+  PENDING
+  APPROVED
+  REFUSED
+  WITHDRAWN
+  SUPERSEDED
+}
+
+/// CF4-I, migration 20260930050000. Spec §3. The client's stated reason for a cancellation.
+/// Keep in step with `cancellationReasonSchema` in packages/shared.
+enum CancellationReason {
+  NO_LONGER_NEEDED
+  TOO_SLOW
+  REPAIRER_UNRESPONSIVE
+  OTHER_SOLUTION
+  OTHER
+}
+
+model Profile {
+  id                    String    @id @default(uuid())
+  userId                String    @unique
+  // phone and phoneVerifiedAt moved to the user row, beside email and
+  // emailVerified, so signup can write them in one atomic call.
+  avatarPath            String?
+  clientEnabled         Boolean   @default(true)
+  repairerEnabled       Boolean   @default(false)
+  activeMode            Mode      @default(CLIENT)
+  onboardingCompletedAt DateTime?
+  // Identity assurance lives on the person, not on RepairerProfile, which only
+  // exists once someone enables réparateur mode. A client needs somewhere to
+  // hold a level too.
+  verificationLevel     VerificationLevel @default(NONE)
+  verifiedAt            DateTime?
+  /// 🛑 A DURABLE FACT, NOT A LOWER NUMBER. Each promoter is guarded on the CURRENT level
+  /// (promote-identity.ts on BASIC, promote-business.ts on IDENTITY), and
+  /// identity.service.ts:435 re-promotes after EVERY Stripe Identity webhook sync — so
+  /// lowering the level alone is undone by the next webhook. Same pattern and same reason as
+  /// IdentityVerification.selfieFraudSignalAt: evidence that something happened is a
+  /// different kind of fact from a current status.
+  ///
+  /// Read by promote-identity.ts and promote-business.ts. Deliberately NOT by
+  /// promote-basic.ts: BASIC gates publishing through gate.ts's assertBasicVerified, so
+  /// barring a revoked account from BASIC would stop him publishing a demande as a CLIENT
+  /// the day VERIFICATION_GATE_ENABLED is switched on. See the B2 spec §4.1.
+  verificationRevokedAt     DateTime?
+  verificationRevokedReason String?
+  /// §8.3's « Suspendre temporairement un réparateur ». HERE beside repairerEnabled rather
+  /// than on RepairerProfile, because this is réparateur MODE STATE and that table holds
+  /// PRESENTATION — and because every offer predicate has to reach this through
+  /// `Offer.repairer.profile`, where an optional to-one relation would silently drop rows.
+  ///
+  /// Independent of `repairerEnabled`, deliberately: his client side keeps working. That is
+  /// also why `OffersService.assertRepairerEnabled` does NOT cover this and needs its own check
+  /// (guard 6), and why `UsersService.updateModes` must refuse re-enabling while it is set
+  /// (guard 7).
+  ///
+  /// 🛑 NAME THE SYMBOL, NOT THE LINE: there are TWO private methods called
+  /// assertRepairerEnabled, and only `OffersService`'s is meant above. The other is
+  /// `UsersService`'s, called from `signBannerUpload`, `setBanner`, `updateRepairer`,
+  /// `updateRepairerProfile`, `setCategories` and `setAvailability`, and it is deliberately NOT
+  /// extended to this marker — so a suspended réparateur can still edit his own fiche and banner.
+  /// His fiche is unreachable while suspended, so an edit harms nobody, and a réparateur suspended
+  /// FOR an offensive banner must be able to replace it. Blocking profile edits would remove the
+  /// remedy along with the offence.
+  repairerSuspendedAt       DateTime?
+  /// Null means indefinite, mirroring User.banExpires.
+  repairerSuspendedUntil    DateTime?
+  repairerSuspendedReason   String?
+  /// `CF-47`. Notification groups this account still wants, per
+  /// `NOTIFICATION_GROUP_BY_TYPE` in packages/shared. Enforced once, at
+  /// NotificationsService.emit, which is the single entry point for all eight types.
+  ///
+  /// Suppression happens at EMIT rather than at read: nothing in the read paths, the
+  /// partial unique index or the badge counts changes, and re-enabling a group does not
+  /// back-fill rows the user asked not to receive.
+  ///
+  /// Default true because that is the behaviour every existing account has today, which
+  /// is also why the migration needs no backfill step.
+  notifyOffers          Boolean   @default(true)
+  notifyMessages        Boolean   @default(true)
+  notifyCommandes       Boolean   @default(true)
+  /// CF5-15: When the user last opened/inspected the repairer Tableau de bord.
+  /// Null until first visit (all current to-do items count as unseen).
+  dashboardTodoSeenAt   DateTime?
+  /// V8 E2 (`DEC8-09` (2)): the first-use help bubbles per mode, `tourStateSchema` in packages/shared
+  /// (`{ CLIENT, REPAIRER }`, each `{ offer, seen, updatedAt }`). Null = never offered, which is every
+  /// account before E2, so the migration has no backfill. Written only by `UsersService.updateTour`.
+  tourState             Json?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  deletedAt             DateTime?
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([deletedAt])
+}
+
+model RepairerProfile {
+  id                String            @id @default(uuid())
+  userId            String            @unique
+  kind              RepairerKind      @default(INDIVIDUAL)
+  displayName       String
+  bio               String?
+  postalCode        String?
+  lat               Float?
+  lng               Float?
+  serviceAreaLabel  String?
+  /// `CF-51`, migration 29. How far he travels, in kilometres. Null for everybody until he
+  /// says — and null is « not stated », not « zero ».
+  ///
+  /// HERE beside postalCode/lat/lng rather than on its own table, because it is the same kind
+  /// of thing: réparateur geography. That is the difference from RepairerAvailability below,
+  /// which is keyed on User so that a declaration is unambiguously independent of the
+  /// réparateur-mode toggle rather than merely surviving it in practice.
+  ///
+  /// DISPLAY ONLY, on the owner's decision of 2026-09-01. Nothing filters on it: a radius that
+  /// hid demandes from his own feed would make him silently stop seeing work he used to see.
+  ///
+  /// 🛑 CORRECTED 2026-09-03: this comment used to say « this row is soft-deleted on mode
+  /// disable and restored on re-enable ». The second half is true — `UsersService.updateModes`'s
+  /// upsert clears deletedAt on enable — but the FIRST HALF IS FALSE: updateModes writes
+  /// nothing at all on disable, and MEASURED across all five `prisma.repairerProfile` write
+  /// sites in `users.service.ts` — `setBanner`, `updateModes`, `updateRepairer`,
+  /// `updateRepairerProfile` and `deleteAccount` — nothing in the API ever sets
+  /// RepairerProfile.deletedAt to a non-null value. Production agrees: 21 RepairerProfile rows,
+  /// ZERO with deletedAt set. directoryWhere's `deletedAt: null` clause is therefore inert
+  /// today. It is KEPT rather than removed: an inert guard costs nothing and removing it would
+  /// be wrong the day a path does set the column.
+  ///
+  /// 🛑 THE SAME FALSE PREMISE IS STILL LIVE TWO PLACES BELOW, out of this task's scope but
+  /// recorded so it is not lost: RepairerCategory's model comment (« disabling réparateur mode
+  /// soft-deletes it ») and RepairerAvailability's (« is soft-deleted when réparateur mode is
+  /// disabled ») both assert it. Their CONCLUSION — key on User — survives regardless, which is
+  /// why neither is urgent.
+  serviceRadiusKm   Int?
+  // CF-24, migration 25. The fiche-publique cover image, as a storage path in
+  // PHOTO_BUCKET under a `banners/` prefix. Null for everybody until one is
+  // uploaded.
+  //
+  // HERE rather than on Profile beside avatarPath, and the split is the same one
+  // the comment below draws: a banner is réparateur PRESENTATION, like bio and
+  // displayName, while an avatar is the person and serves both modes. A
+  // client-only account has no public fiche, so a banner column on Profile would
+  // be data with no surface to render it.
+  bannerPath        String?
+  /// CMP-D1 / CMP-D2. When fiscal declaration was validated and completed.
+  fiscalCompletedAt DateTime?
+  /// CMP-D3. End-of-year fiscal reminders count (max 2 before payout freeze).
+  fiscalReminderCount Int       @default(0)
+  /// CMP-D3. When last fiscal reminder was dispatched (notification/email).
+  lastFiscalReminderAt DateTime?
+  /// V8 E1, DEC8-08 (4). When the 3-day setup reminder was SETTLED: sent, or no longer due (setup
+  /// complete, or the profile predates E1, backfilled by migration 20261117020000). Null = still owed.
+  setupReminder3dAt DateTime?
+  /// V8 E1. The same for the 8-day reminder.
+  setupReminder8dAt DateTime?
+  // verificationLevel and verifiedAt moved to Profile. Identity belongs to the
+  // person; postalCode, lat and lng stay here because they are réparateur
+  // geography rather than identity.
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  deletedAt         DateTime?
+  user              User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([deletedAt])
+  @@index([fiscalCompletedAt])
+}
+
+model Category {
+  id        String     @id @default(uuid())
+  parentId  String?
+  slug      String     @unique
+  labelFr   String
+  sortOrder Int        @default(0)
+  active    Boolean    @default(true)
+  icon      String?
+  description String?
+  // onDelete: Restrict is explicit, not inherited. Prisma defaults an OPTIONAL
+  // relation to SET NULL, which would silently promote every child to
+  // top-level if a parent were ever deleted.
+  parent    Category?  @relation("CategoryTree", fields: [parentId], references: [id], onDelete: Restrict)
+  children  Category[] @relation("CategoryTree")
+  demandes  Demande[]
+  repairers RepairerCategory[]
+  brands    BrandCategory[]
+  models    DeviceModel[]
+  faultTypes FaultType[]
+
+  @@index([active, sortOrder])
+  @@index([parentId, sortOrder])
+}
+
+/// `CF-25`. A réparateur's declared speciality set — design §5.
+///
+/// A row is a ROOT or a CHILD category, and which one is the feature: a root means the whole
+/// family INCLUDING subcategories added later, so the claim tracks the taxonomy rather than
+/// freezing a snapshot. `UsersService.setCategories` normalises a root's children away.
+///
+/// 🛑 KEYED ON `User`, NOT ON `RepairerProfile`, and that is load-bearing rather than stylistic.
+/// `users.service.ts` NEVER deletes a `RepairerProfile`: disabling réparateur mode soft-deletes
+/// it and re-enabling clears `deletedAt` through the upsert's update arm. A FK to that row would
+/// leave it ambiguous whether a declaration survives a mode toggle. It must survive, exactly as
+/// `bio`, `postalCode` and `bannerPath` do. `FavoriteRepairer` sets the same precedent, and
+/// `RepairerCardDto` states the rule: every consumer addresses users.
+model RepairerCategory {
+  id             String   @id @default(uuid())
+  repairerUserId String
+  categoryId     String
+  createdAt      DateTime @default(now())
+
+  repairer User @relation(fields: [repairerUserId], references: [id], onDelete: Cascade)
+  // onDelete: Restrict is explicit, not inherited, for the same reason `Category.parent`
+  // spells it out: a category somebody has declared must not silently become deletable.
+  // Matches `Demande.categoryId`, which the taxonomy migration relied on when it reused five
+  // rows rather than replacing them.
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+
+  // Makes the write idempotent, which is what lets normalisation be a defence rather than the
+  // only guard.
+  @@unique([repairerUserId, categoryId])
+  @@index([repairerUserId])
+  // For `CF-33`, which queries in the opposite direction to the profile read.
+  @@index([categoryId])
+}
+
+/// `CF-52`, migration 29. His weekly opening hours — mockup `04`'s « Disponibilités ».
+///
+/// Keyed on User rather than RepairerProfile for the same reason RepairerCategory is: a
+/// RepairerProfile is soft-deleted when réparateur mode is disabled and restored when it is
+/// re-enabled, so hours keyed to it would vanish and come back.
+///
+/// SEVEN ROWS OR ZERO, enforced by the Zod schema at the boundary. Zero rows means « has not
+/// answered »; seven rows all closed means « closed all week ». The fiche renders those
+/// differently, which is why there is no backfill and no default week.
+///
+/// Times are MINUTES FROM MIDNIGHT. See packages/shared/src/repairer-availability.ts.
+model RepairerAvailability {
+  id             String   @id @default(uuid())
+  repairerUserId String
+  /// ISO-8601: 1 = lundi … 7 = dimanche. NOT Date.getDay()'s 0-based Sunday-first.
+  dayOfWeek      Int
+  closed         Boolean  @default(false)
+  opensAt        Int?
+  closesAt       Int?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  repairer User @relation(fields: [repairerUserId], references: [id], onDelete: Cascade)
+
+  /// One row per day per réparateur, which makes the whole-collection write idempotent.
+  @@unique([repairerUserId, dayOfWeek])
+  @@index([repairerUserId])
+}
+
+model Demande {
+  id            String          @id @default(uuid())
+  authorUserId  String
+  categoryId    String
+  brand         String?
+  model         String?
+  title         String
+  description   String
+  parts         PartsPreference @default(UNKNOWN)
+  mode          DemandeMode     @default(OFFERS)
+  budgetCents   Int?
+  locationLabel String
+  postalCode    String
+  lat           Float?
+  lng           Float?
+  status        DemandeStatus   @default(OPEN)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  deletedAt     DateTime?
+  /// Stage 6 piece C1, §8.4 « Masquer une demande ». Reversible: the operator's triage
+  /// state. Invisible to EVERYONE including the author (spec decision 3), because the
+  /// visible-to-author variant must say so on a mobile screen or the author watches a
+  /// normal demande silently receive no offers.
+  hiddenAt        DateTime?
+  /// NO relation, deliberately — the same call Commande.refundedByUserId documents: a
+  /// cascade would delete the moderation trail when the account is deleted.
+  hiddenByUserId  String?
+  hiddenReason    String?
+  /// Attribution for an ADMIN delete, so the list can tell it from CF-16's client
+  /// self-delete, which writes the same deletedAt. In the row rather than derived from
+  /// AdminAuditLog: the audit interceptor writes AFTER the handler, so a failed audit
+  /// write would make an admin removal read as the client's own. Same split as
+  /// Commande.refundedByUserId + refundReason beside the commande.refund audit action.
+  deletedByUserId String?
+  deletedReason   String?
+
+  /// CF4-H (CF4-25), migration 20260930040000. Non-null = a PRIVATE quote request, readable
+  /// only by the author, this réparateur and admins (`PUBLIC_DEMANDE_WHERE`). NO relation,
+  /// deliberately: account deletion must not cascade away order history - it closes the
+  /// request instead (users.service deleteAccount).
+  /// The partial unique index "Demande_open_quote_request_key" (authorUserId,
+  /// targetRepairerUserId) WHERE status = 'OPEN' AND deletedAt IS NULL AND
+  /// targetRepairerUserId IS NOT NULL is SQL-only (H6); Prisma cannot express it.
+  targetRepairerUserId String?
+  /// Why a private request is CANCELLED. Null while open, and always null on public rows.
+  quoteClosedReason    QuoteClosedReason?
+  /// The réparateur's reason when he declines. Shown to the client.
+  quoteDeclineNote     String?
+  /// Creation + 7 days; cleared when a quote is sent (the timer stops).
+  quoteExpiresAt       DateTime?
+  /// « Mode d'intervention souhaité ».
+  quotePreferredTravel TravelMode?
+  /// « Informations complémentaires », max 1000.
+  quoteDetails         String?
+
+  author    User           @relation(fields: [authorUserId], references: [id], onDelete: Cascade)
+  category  Category       @relation(fields: [categoryId], references: [id])
+  faultTypeId String?
+  faultType   FaultType?     @relation(fields: [faultTypeId], references: [id], onDelete: SetNull)
+  photos    DemandePhoto[]
+  offers    Offer[]
+  commandes Commande[]
+  /// Étape 5. Virtual, no SQL: the key lives on Conversation.
+  conversations Conversation[]
+  favoritedBy   FavoriteDemande[]
+
+  @@index([deletedAt])
+  @@index([status, categoryId])
+  @@index([authorUserId])
+  @@index([targetRepairerUserId])
+  @@index([faultTypeId])
+}
+
+model DemandePhoto {
+  id          String  @id @default(uuid())
+  demandeId   String
+  storagePath String
+  sortOrder   Int     @default(0)
+
+  demande Demande @relation(fields: [demandeId], references: [id], onDelete: Cascade)
+
+  @@index([demandeId])
+}
+
+model Offer {
+  id             String      @id @default(uuid())
+  demandeId      String
+  repairerUserId String
+  priceCents     Int
+  delayHours     Int
+  warrantyLabel  String
+  partsLabel     String
+  travel         TravelMode  @default(WORKSHOP)
+  /// Whether this reparateur will receive THIS object as a parcel. Per-offer
+  /// rather than per-profile because it is a property of the object, not of the
+  /// person: he will ship a phone and not a television.
+  ///
+  /// Not a third TravelMode value: travel and parcel are not mutually exclusive,
+  /// and he may accept a workshop drop-off OR a parcel for the same object.
+  ///
+  /// @default(false) is the fail-safe, and it is what keeps « Envoi par colis »
+  /// unselectable until a reparateur opts in -- a stronger guarantee than the
+  /// PAYMENTS_ENABLED flag, because it survives the flag being flipped.
+  acceptsParcel  Boolean     @default(false)
+  comment        String?
+  status         OfferStatus @default(SENT)
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+  deletedAt      DateTime?
+
+  /// Moderation deletion tracking (Stage 6 Piece C3, §8.5)
+  /// Plain scalar String with NO foreign key constraint, preventing cascade breaks upon user deletion.
+  deletedByUserId String?
+  deletedReason   String?
+
+  demande   Demande    @relation(fields: [demandeId], references: [id], onDelete: Cascade)
+  repairer  User       @relation(fields: [repairerUserId], references: [id], onDelete: Cascade)
+  commandes Commande[]
+
+  // One row per offer, so a withdrawn offer survives as the client's record of
+  // what was proposed. Uniqueness is narrowed to the live ones, which keeps the
+  // rule the client asked for — a réparateur holds at most one offer on the
+  // table and changes price by withdrawing and re-offering — without the revive
+  // that destroys the trail.
+  //
+  // deletedAt is in the predicate deliberately. Without it, a moderation
+  // soft-delete of a live offer would keep occupying the réparateur's single
+  // live slot and bar them from this demande permanently, turning a moderation
+  // action into an invisible lifetime ban.
+  @@unique([demandeId, repairerUserId], where: { status: "SENT", deletedAt: null })
+  // Required, not tidying. The unique index above covers only live rows, so it
+  // cannot serve listForDemande, which now reads every offer on a demande.
+  // Without this the client's offer history has no index at all, and nothing
+  // fails loudly.
+  @@index([demandeId])
+  @@index([deletedAt])
+  @@index([repairerUserId])
+}
+
+/// One paid, or in-flight, repair order.
+///
+/// Created in PENDING_PAYMENT alongside a Stripe Checkout Session, and moved to
+/// PAID by the `checkout.session.completed` webhook inside the same transaction
+/// that accepts the offer. There is no accepted-but-unpaid state, by design: the
+/// approved prototype has none, and if the platform escrows funds then payment is
+/// the commitment.
+model Commande {
+  id                    String         @id @default(uuid())
+  demandeId             String
+  offerId               String
+  clientUserId          String
+  /// Denormalised from the offer. P3 pays a person, and a join that a moderation
+  /// soft-delete can break is not something to discover at payout time.
+  repairerUserId        String
+  delivery              DeliveryMode
+  repairCents           Int
+  shippingCents         Int
+  protectionCents       Int
+  totalCents            Int
+  status                CommandeStatus @default(PENDING_PAYMENT)
+  stripeSessionId       String?        @unique
+  stripePaymentIntentId String?        @unique
+  /// Unread in P1; P3's `source_transaction`.
+  stripeChargeId        String?
+  paidAt                DateTime?
+  /// Compliance backstop against the 90-day holding limit, not the release timer.
+  /// P3 deliberately does NOT recompute this: it stores the FACT
+  /// (releaseRequestedAt) and leaves the policy window to P5, which owns the
+  /// behaviour that acts on it. See the P3 spec 4.5.
+  autoReleaseDueAt      DateTime?
+  /// Nullable with NO default, deliberately: null means "not yet paid", exactly
+  /// like paidAt. A @default(PAID) would make every PENDING_PAYMENT row claim to
+  /// have been paid and put status and step in contradiction on the same row.
+  /// Written to PAID in the same transaction that sets status PAID.
+  step                  CommandeStep?
+  /// When the reparateur asked for release. P5 computes its window from this.
+  releaseRequestedAt    DateTime?
+  releasedAt            DateTime?
+  /// @unique is the durable double-pay guard, not decoration. Stripe v1
+  /// idempotency keys expire after 24 hours, so `release:<id>` protects only a
+  /// same-day retry. See the P3 spec 7.2.
+  stripeTransferId      String?        @unique
+  /// Recorded rather than recomputed, so a historical row still reports what was
+  /// actually paid if the fee model ever changes. Equals repairCents today: the
+  /// reparateur receives 100% of his quote.
+  transferredCents      Int?
+  /// WHEN the transfer to the réparateur was made, written at every site that writes
+  /// `stripeTransferId`. Distinct from `releasedAt`: an order released while the réparateur's fiscal
+  /// information (DAC7) was incomplete keeps its release date and is paid by a later sweep, possibly
+  /// in the next year, and the DAC7 annual file reports money by the date it moved (CMP-D4, RU-28).
+  /// Null on a row with no transfer. Backfilled from `releasedAt` for every row that already had one.
+  transferredAt         DateTime?
+  /// P3 section 15 binds P4 to own trackingNumber: the column, the DTO field and
+  /// the « Suivi · ... » sub-line. Two legs make it two columns.
+  ///
+  /// Deliberately NOT @unique. A carrier number is unique in the carrier's
+  /// namespace, not ours, and a unique index here would turn an operator's typo
+  /// on one order into a confusing failure on an unrelated one. The double-issue
+  /// guard is a not-null check in the admin route.
+  ///
+  /// No column records WHEN the labels were issued: outboundTrackingNumber being
+  /// non-null IS that fact, and a second representation of one state is what
+  /// P3 section 4.1 fixed rather than copied.
+  outboundTrackingNumber String?
+  returnTrackingNumber   String?
+  /// When the reparateur posted the repaired device back. The input to P5's
+  /// RETURN_SENT timeout, which is what lets him ask for release without
+  /// claiming a fact about the client's hands.
+  ///
+  /// A general `stepChangedAt` was considered and rejected: it is bookkeeping
+  /// rather than a fact, and it is overwritten the moment the row moves on.
+  /// This records that a parcel was posted, which is what an operator
+  /// investigating a dispute three weeks later actually wants.
+  returnSentAt             DateTime?
+  refundedAt               DateTime?
+  /// Recorded rather than recomputed, the same reasoning as transferredCents:
+  /// if partial refunds ever arrive, a historical row must keep reporting what
+  /// actually went back.
+  refundedCents            Int?
+  /// Half of the durable double-refund guard, and only half. Stripe idempotency
+  /// keys expire after 24 hours, so `refund:<id>` protects only a same-day retry
+  /// -- the same lesson stripeTransferId records for the other direction. Unlike
+  /// stripeTransferId, this id is NOT self-sufficient: a refund can fail after
+  /// being recorded, so the guard is this column PLUS Stripe's verdict on it.
+  /// Trusting it alone marked commandes refunded with no money moved. See the P3
+  /// spec §7.2 and the P5 final review.
+  stripeRefundId           String?        @unique
+  reversedCents            Int?
+  stripeTransferReversalId String?        @unique
+  /// A TIMESTAMP, not a status: a dispute is not terminal and can be won, so a
+  /// DISPUTED status would have no way back. Release refuses while it is set.
+  disputedAt               DateTime?
+  /// CF4-I (spec §4.1). The freeze flag every guard reads (mirrors `disputedAt` above),
+  /// non-null exactly while a PENDING `CancellationRequest` row exists. Every write that
+  /// changes a row out of PENDING clears this in the same transaction.
+  cancellationRequestedAt  DateTime?
+  /// NO relation, deliberately. A cascade would delete the audit trail of a
+  /// money movement when the account is deleted. Contrast repairerUserId, which
+  /// is denormalised for the opposite reason.
+  refundedByUserId         String?
+  refundReason             String?
+  /// CF4-D (spec §5), migration 20260929020000. The flexible refund breakdown, one
+  /// column per component - null together for a legacy full refund with no recorded
+  /// breakdown, and for any commande never refunded at all. `refundMotif` is the
+  /// admin's reason category; `refundReason` above stays as the free-text note field
+  /// it already was and is not renamed, so an old row's note is not orphaned.
+  refundRepairCents     Int?
+  refundShippingCents   Int?
+  refundProtectionCents Int?
+  refundMotif           RefundMotif?
+  /// Livraison Boxtal (spec §4). Null for local orders and for parcels paid under the
+  /// manual driver. The parcel facts are stored per commande because the price and the
+  /// label were bought against THESE numbers, the same reason transferredCents is stored.
+  parcelOption      ParcelOption?
+  parcelWeightGrams Int?
+  parcelLengthCm    Int?
+  parcelWidthCm     Int?
+  parcelHeightCm    Int?
+  parcelValueCents  Int?
+  /// Fourth amount. totalCents = repair + shipping + protection + insurance.
+  insuranceCents    Int            @default(0)
+  discountCents     Int            @default(0)
+  shippingQuoteId   String?        @unique
+  executionDelayPreference   ExecutionDelayPreference @default(IMMEDIATE)
+  withdrawalWaiverAcceptedAt DateTime?
+  withdrawalWaiverText       String?
+  withdrawalPeriodEndsAt     DateTime?
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+
+  demande  Demande @relation(fields: [demandeId], references: [id], onDelete: Cascade)
+  offer    Offer   @relation(fields: [offerId], references: [id], onDelete: Cascade)
+  client   User    @relation("CommandeClient", fields: [clientUserId], references: [id], onDelete: Cascade)
+  repairer User    @relation("CommandeRepairer", fields: [repairerUserId], references: [id], onDelete: Cascade)
+  shippingAddresses ShippingAddress[]
+  /// Étape 5 piece 3. At most one review per commande, enforced by a unique index
+  /// on the Review side, which is what makes a duplicate structurally impossible.
+  review            Review?
+  shippingQuote     ShippingQuote? @relation(fields: [shippingQuoteId], references: [id])
+  shipments         Shipment[]
+  dispute           Dispute?
+  /// CF4-I (spec §4.1). Every cancellation request ever made against this commande; the
+  /// latest by `createdAt` is what `CommandeDto.cancellationRequest` reads.
+  cancellationRequests CancellationRequest[]
+  /// CF4-12/13/14 §4.2. Append-only, written by `recordStep` in the SAME transaction
+  /// as every write that sets `step` above. No backfill: an older order simply has
+  /// fewer/no rows and the timeline shows those steps undated.
+  stepEvents        CommandeStepEvent[]
+  consentProofs     ConsentProof[]
+  promoUsage        PromoUsage?
+
+  /// One open payment attempt per demande. PAID needs no equivalent index: the
+  /// checkout guard requires the demande to be OPEN and paying makes it
+  /// IN_PROGRESS, so the only route that creates one cannot run twice.
+  @@unique([demandeId], where: { status: "PENDING_PAYMENT" })
+  @@index([demandeId])
+  @@index([clientUserId])
+  @@index([repairerUserId])
+}
+
+/// CF4-12/13/14, design §4.2. One row per `Commande.step` change, so the details
+/// page's timeline can show a dated history instead of only the current step.
+/// Written by `recordStep` (`commandes/record-step.ts`) in the SAME transaction as
+/// the write that sets `step` — never on its own, so the two cannot drift apart.
+/// No backfill: an order paid before this table existed simply has no early rows,
+/// and the design accepts that those steps render undated.
+model CommandeStepEvent {
+  id         String       @id @default(uuid())
+  commandeId String
+  step       CommandeStep
+  at         DateTime     @default(now())
+
+  commande Commande @relation(fields: [commandeId], references: [id], onDelete: Cascade)
+
+  @@index([commandeId, at])
+}
+
+/// Append-only record of every Stripe event we have processed.
+///
+/// Stripe redelivers on any non-2xx and on its own retry schedule, so the handler
+/// inserts this row FIRST and treats a unique violation as "already done".
+/// One shipping address per party per commande, for the colis round trip.
+///
+/// Stored per COMMANDE rather than on the profile for the same reason
+/// transferredCents is stored rather than recomputed: a label was bought against
+/// this address, and a later profile edit must not rewrite where last month's
+/// parcel was sent.
+///
+/// A table rather than ten more columns on Commande, and the unique key is what
+/// makes "each party supplies their own, once" a database rule instead of a
+/// convention. Two rows means two writers that never contend.
+///
+/// No name and no country. The name comes from User -- firstName/lastName for the
+/// legal identity a carrier label wants, falling back to name. Country is France:
+/// launch geography is France-only and postalCodeSchema is a five-digit French
+/// validator, so a column that only ever holds FR is the permanently-constant
+/// field P3 section 4.4 refused for trackingNumber.
+model ShippingAddress {
+  id         String       @id @default(uuid())
+  commandeId String
+  role       CommandeRole
+  line1      String
+  line2      String?
+  postalCode String
+  city       String
+  /// Carriers want a contact number for a delivery exception. Prefilled from
+  /// User.phone where there is one, but stored HERE because the label was bought
+  /// against this number. Validated by frAnyPhoneSchema, NOT frPhoneSchema: that
+  /// one is mobiles-only because piece 4 sends it an SMS, and a reparateur's
+  /// workshop may have only an 01 number.
+  phone      String
+  /// Livraison Boxtal. The relay where THIS party collects: the réparateur for the outbound
+  /// leg, the client for the return. Null under HOME and under the manual driver.
+  parcelPointCode    String?
+  parcelPointNetwork String?
+  parcelPointName    String?
+  parcelPointAddress String?
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  commande Commande @relation(fields: [commandeId], references: [id], onDelete: Cascade)
+
+  @@unique([commandeId, role])
+  @@index([commandeId])
+}
+
+model StripeEvent {
+  id         String   @id
+  type       String
+  receivedAt DateTime @default(now())
+}
+
+/// Livraison Boxtal (spec §4). One row per quote served; checkout references it by id and
+/// never trusts an amount from the request. Kept after checkout (the commande points at it)
+/// so the drift review can compare quoted with billed.
+model ShippingQuote {
+  id                  String    @id @default(uuid())
+  offerId             String
+  clientUserId        String
+  parcelWeightGrams   Int
+  parcelLengthCm      Int
+  parcelWidthCm       Int
+  parcelHeightCm      Int
+  parcelValueCents    Int
+  /// Prices SHOWN: grossed up and rounded. `*ShippingCents` is the cheapest suitable pair, null
+  /// when Boxtal returned no offer for the option. `*InsuredShippingCents` + `*InsuranceCents` are
+  /// the INSURED variant: the cheapest pair whose both legs can insure the value, possibly a dearer
+  /// carrier; both null when no pair can (spec « Amendment, 2026-09-04 »). Checkout reads the
+  /// pair the client's `insured` flag names, never a mix.
+  relayShippingCents         Int?
+  relayInsuredShippingCents  Int?
+  relayInsuranceCents        Int?
+  homeShippingCents          Int?
+  homeInsuredShippingCents   Int?
+  homeInsuranceCents         Int?
+  /// { RELAY?: { OUTBOUND: LegOffer, RETURN: LegOffer }, HOME?: {…} } — see shipping/gateway.ts LegOffer.
+  legs                Json
+  expiresAt           DateTime
+  createdAt           DateTime  @default(now())
+  commande            Commande?
+
+  @@index([offerId, clientUserId, createdAt])
+}
+
+/// One row per leg, created when the payment completes. The tracking number is NOT here: it
+/// stays on Commande, where labelReady() already reads it (P3 §4.1: one state, one place).
+model Shipment {
+  id                     String         @id @default(uuid())
+  commandeId             String
+  leg                    ShipmentLeg
+  status                 ShipmentStatus @default(PENDING)
+  carrierCode            String
+  serviceCode            String
+  carrierLabel           String
+  quotedCostExclTaxCents Int
+  quotedCostInclTaxCents Int
+  insured                Boolean        @default(false)
+  quotedInsuranceCents   Int            @default(0)
+  boxtalOrderId          String?        @unique
+  boxtalStatus           String?
+  /// deliveryPriceExclTax + insurancePriceExclTax as Boxtal returned them, in cents.
+  billedExclTaxCents     Int?
+  labelStoragePath       String?
+  labelIssuedAt          DateTime?
+  /// The first in-app download of the stored label, by the leg's sender. Stamped
+  /// once (never overwritten); null means never downloaded. Drives shipmentDisplayStatus's
+  /// "Étiquette téléchargée" (CF4-20, spec §3).
+  labelDownloadedAt      DateTime?
+  orderedAt              DateTime?
+  firstScanAt            DateTime?
+  deliveredAt            DateTime?
+  cancelledAt            DateTime?
+  failureReason          String?
+  createdAt              DateTime       @default(now())
+  updatedAt              DateTime       @updatedAt
+
+  commande Commande        @relation(fields: [commandeId], references: [id], onDelete: Cascade)
+  events   ShipmentEvent[]
+
+  @@unique([commandeId, leg])
+}
+
+/// One row per carrier event: the timeline, and the cahier's « toutes les étapes sont horodatées ».
+model ShipmentEvent {
+  id         String   @id @default(uuid())
+  shipmentId String
+  /// Boxtal's status value as TEXT, so a value the vendor adds later cannot break the write.
+  status     String
+  message    String?
+  occurredAt DateTime
+  raw        Json
+  createdAt  DateTime @default(now())
+
+  shipment Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+
+  @@unique([shipmentId, status, occurredAt])
+  @@index([shipmentId, occurredAt])
+}
+
+/// Boxtal webhook de-duplication. Same role as StripeEvent; separate table because the id
+/// namespaces are different vendors'.
+model BoxtalEvent {
+  id         String   @id
+  type       String
+  receivedAt DateTime @default(now())
+}
+
+model User {
+  id              String           @id
+  // `name` is the DISPLAY name, composed at signup from firstName + lastName.
+  // firstName and lastName are the LEGAL identity fields that level 2 checks
+  // against an ID document. Different jobs, not duplication.
+  name            String
+  firstName       String?
+  lastName        String?
+  birthDate       DateTime?
+  /// The PUBLIC identifier, and the ONLY thing a stranger is shown for a client.
+  /// Added by the client's V1 feedback, CF-04, whose sibling CF-05 bans the legal
+  /// name from every public surface — so this is what replaces it.
+  ///
+  /// Stored canonical-lowercase, which is why a plain @unique is enough: the
+  /// validator in packages/shared permits only [a-z0-9_], so `Camille` is not a
+  /// legal value and can never be a second row from `camille`. Same move `phone`
+  /// makes by canonicalising to E.164 before the uniqueness check.
+  ///
+  /// NOT NULL is survivable only because of TWO things together: migration 22's
+  /// backfill for existing rows, and the derive step in normalise-username.ts for
+  /// new ones. A social signup supplies no handle, so without that hook every
+  /// Google and Apple signup would fail at this constraint.
+  username        String           @unique
+  email           String
+  emailVerified   Boolean          @default(false)
+  // Nullable on purpose, and not because of legacy rows: a social signup
+  // supplies no phone and no dependable name split, so requiring these would
+  // turn enabling Google from a flag flip into a migration.
+  phone           String?          @unique
+  phoneVerifiedAt DateTime?
+  /// Pre-launch Item 2. Mandatory CGU acceptance audit trail.
+  cguAccepted     Boolean          @default(false)
+  cguAcceptedAt   DateTime?
+  cguVersion      String?
+  /// V9 B1 (`DEC9-04`, `DEC9-05`): the sign-up method (null for seeded accounts with no login row),
+  /// when a social account confirmed its generated username, and the accepted privacy version.
+  signupMethod        SignupMethod?
+  privacyAccepted     Boolean       @default(false)
+  usernameConfirmedAt DateTime?
+  privacyAcceptedAt   DateTime?
+  privacyVersion      String?
+  /// Pre-launch Item 3. Separate marketing consent (opt-in).
+  marketingConsent      Boolean    @default(false)
+  marketingConsentAt    DateTime?
+  marketingConsentEmail Boolean  @default(false)
+  marketingConsentSms   Boolean  @default(false)
+  image           String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  role            String?
+  banned          Boolean?         @default(false)
+  banReason       String?
+  banExpires      DateTime?
+  sessions             Session[]
+  accounts             Account[]
+  profile              Profile?
+  repairerProfile      RepairerProfile?
+  demandes             Demande[]
+  offers               Offer[]
+  commandesAsClient    Commande[]          @relation("CommandeClient")
+  commandesAsRepairer  Commande[]          @relation("CommandeRepairer")
+  // Virtual, and produce no SQL. Prisma requires both sides of a relation.
+  verificationAttempts VerificationAttempt[]
+  connectAccount       ConnectAccount?
+  identityVerification IdentityVerification?
+  businessVerification BusinessVerification?
+  // Étape 5. Also virtual, and also produce no SQL: the foreign keys live on the
+  // owning side, so nothing in migration 20 alters this table.
+  conversationsAsClient   Conversation[]       @relation("ConversationClient")
+  conversationsAsRepairer Conversation[]       @relation("ConversationRepairer")
+  messages                Message[]
+  reviewsWritten          Review[]             @relation("ReviewAuthor")
+  reviewsReceived         Review[]             @relation("ReviewRepairer")
+  reportsMade             ConversationReport[] @relation("ReportReporter")
+  reportsAgainst          ConversationReport[] @relation("ReportReported")
+  blocksMade              Block[]              @relation("BlockBlocker")
+  blocksAgainst           Block[]              @relation("BlockBlocked")
+  favoriteRepairers       FavoriteRepairer[]   @relation("FavRepairerOwner")
+  favoritedAsRepairerBy   FavoriteRepairer[]   @relation("FavRepairerTarget")
+  favoriteDemandes        FavoriteDemande[]
+  repairerCategories      RepairerCategory[]
+  repairerAvailability    RepairerAvailability[]
+  /// Virtual, and produces no SQL: the foreign key lives on Notification.
+  notifications           Notification[]
+  /// `CF-44`. Virtual, produces no SQL: the foreign key lives on PushToken.
+  pushTokens              PushToken[]
+  adminAuditLogs          AdminAuditLog[]
+  /// CF4-41. Better Auth twoFactor plugin field. Only staff accounts ever enable it.
+  twoFactorEnabled        Boolean?             @default(false)
+  twoFactors              TwoFactor[]
+  staffInvitationsCreated StaffInvitation[]   @relation("StaffInvitationsCreated")
+  consentProofs           ConsentProof[]
+  broadcastsTriggered     AdminBroadcast[]    @relation("BroadcastOperator")
+  referralCodes           PromoCode[]         @relation("UserReferralCodes")
+  promoUsages             PromoUsage[]
+  referrerRewards         ReferralReward[]    @relation("ReferrerRewards")
+  fiscalDeclaration       RepairerFiscalDeclaration?
+  fiscalAuditLogs         RepairerFiscalAuditLog[]
+  dac7Recaps              RepairerDac7Recap[]
+  refereeRewards          ReferralReward[]    @relation("RefereeRewards")
+  alertsRead              AdminAlert[]        @relation("AlertsReadBy")
+
+  @@unique([email])
+  @@map("user")
+}
+
+/// Append-only ledger of every verification attempt.
+///
+/// A ledger rather than counter columns on User, for three reasons: it needs no
+/// reset job, it is auditable, and it turns "what have we spent" into a query.
+///
+/// `outcome` is what makes both of those correct. SENT means money left the
+/// account; BLOCKED means it did not. The daily cap counts only SENT, or a
+/// blocked attempt would consume the victim's own budget and hand an attacker
+/// free amplification. The cooldown counts every row regardless of outcome, or
+/// someone whose sends are all blocked can hammer the endpoint for free.
+model VerificationAttempt {
+  id          String              @id @default(uuid())
+  userId      String
+  channel     VerificationChannel
+  /// E.164 phone, email address, or — since piece 5 — a 9-digit SIREN. Counted
+  /// against per-target limits, which is what makes the per-SIREN cap countable
+  /// through the [target, createdAt] index below.
+  target      String
+  outcome     VerificationOutcome
+  /// Twilio verification SID. Null on our own BLOCKED rows, which never reached
+  /// Twilio, and null on EVERY REGISTRY row whatever its outcome: that channel has
+  /// no provider reference to record.
+  providerRef String?
+  /// Twilio's own code, kept as text: 60410, 60605, 60203.
+  errorCode   String?
+  ipAddress   String?
+  createdAt   DateTime            @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([target, createdAt])
+}
+
+model Session {
+  id             String   @id
+  expiresAt      DateTime
+  token          String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  ipAddress      String?
+  userAgent      String?
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  impersonatedBy String?
+  /// CF4-41, decision N5. Stamped ONLY by staff-two-factor.ts when a two-factor
+  /// verification created this session. AdminRoleGuard's proof of the second factor.
+  twoFactorVerifiedAt DateTime?
+  /// V7 A11 (U2b). Stamped ONLY by security.service.ts when this session re-entered its password
+  /// (or an e-mail code). IBAN change, account deletion and e-mail change need it within 10 min.
+  stepUpAt            DateTime?
+
+  @@unique([token])
+  @@index([userId])
+  @@map("session")
+}
+
+/// CF4-41. Better Auth twoFactor plugin table (TOTP secret + encrypted backup codes).
+model TwoFactor {
+  id                      String    @id
+  secret                  String
+  backupCodes             String
+  userId                  String
+  user                    User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  verified                Boolean?  @default(true)
+  failedVerificationCount Int?      @default(0)
+  lockedUntil             DateTime?
+
+  @@index([secret])
+  @@index([userId])
+  @@map("twoFactor")
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@index([userId])
+  @@map("account")
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([identifier])
+  @@map("verification")
+}
+
+/// Piece: CF-42. A SYSTEM message has no human author, which is why
+/// Message.senderUserId is nullable. The pair is bound by a CHECK constraint in
+/// migration 23 rather than by convention, because two columns that can contradict
+/// each other eventually will.
+enum MessageKind {
+  USER
+  SYSTEM
+  SUPPORT
+}
+
+enum ConnectStatus {
+  PENDING
+  VERIFIED
+  RESTRICTED
+  REJECTED
+}
+
+enum ConnectEntityType {
+  INDIVIDUAL
+  COMPANY
+}
+
+enum IdentityStatus {
+  REQUIRES_INPUT
+  PROCESSING
+  VERIFIED
+  CANCELED
+}
+
+/// Which Stripe Identity check a session ran. Both variants grant IDENTITY; this is for audit
+/// and for proving to a regulator that a non-biometric alternative existed.
+///
+/// 🛑 NEVER RENDERED TO THE **USER** — it may be shown to an OPERATOR for audit. This said a
+/// flat « NEVER rendered », and piece B2 selects, ships and displays it (« Variante : » on the
+/// admin fiche), which is the audit purpose the sentence above already names. Spec §3.1 required
+/// this amendment; only the `packages/shared/src/identity.schemas.ts` copy got it, so for a
+/// while the file every reader opens FIRST held the least accurate of the two.
+enum IdentityVariant {
+  DOCUMENT_AND_SELFIE
+  DOCUMENT_ONLY
+}
+
+/// Stripe's own `redaction.status`. THREE values, read out of the installed SDK's union — the
+/// prose docs mention only two.
+enum RedactionStatus {
+  PROCESSING
+  VALIDATED
+  REDACTED
+}
+
+/// CF4-39 (sub-project M). An operator's decision on the CURRENT identity session. Overrides
+/// Stripe on that session; reset by `start()` when a new session begins.
+enum IdentityDecision {
+  ACCEPTED
+  REFUSED
+  DOCUMENTS_REQUESTED
+}
+
+enum IdentityDecisionMotif {
+  ILLEGIBLE
+  EXPIRED
+  INCONSISTENT
+  WRONG_DOCUMENT
+  OTHER
+}
+
+/// The reparateur's Stripe payout identity. PAYOUT evidence only - it grants no
+/// verification level, because Connect onboarding for a French recipient account
+/// demands no identity document. See the P2 spec's execution amendment.
+model ConnectAccount {
+  id                 String             @id @default(uuid())
+  userId             String             @unique
+  stripeAccountId    String             @unique
+  status             ConnectStatus      @default(PENDING)
+  /// Stripe's answer. Deliberately NOT RepairerProfile.kind, which is
+  /// self-declared and which the identity spec 6.2 forbids from driving a badge.
+  entityType         ConnectEntityType?
+  /// Last four characters of the IBAN of the réparateur's payout account, read from Stripe's
+  /// `external_accounts` at sync time. Nothing else of the IBAN is stored. The DAC7 export (CMP-D4)
+  /// shows it masked; null until the first sync that sees a bank account.
+  ibanLast4          String?
+  /// Stripe's `fingerprint` of that bank account. Stripe gives a platform ONE fingerprint for a bank
+  /// account across all its connected accounts, so two réparateurs with the same value share an IBAN:
+  /// the verification alert « même IBAN sur plusieurs comptes » (A3, RU-29) compares it, because four
+  /// digits identify nothing. Not the IBAN, and useless outside Stripe. Null until a sync sees a bank
+  /// account; accounts that were synced before this column existed fill it at their next sync.
+  ibanFingerprint    String?
+  transfersActive    Boolean            @default(false)
+  detailsSubmittedAt DateTime?
+  disabledReason     String?
+  lastSyncedAt       DateTime?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+}
+
+/// IDENTITY evidence, from a Stripe Identity VerificationSession. The sibling of
+/// ConnectAccount: two evidence tables, one conclusion. Profile.verificationLevel
+/// is that conclusion and the promote-*.ts functions are its only writers.
+model IdentityVerification {
+  id              String         @id @default(uuid())
+  userId          String         @unique
+  /// Stripe Identity VerificationSession id, vs_...
+  stripeSessionId String         @unique
+  status          IdentityStatus @default(REQUIRES_INPUT)
+  /// Stamped once, when status first reaches VERIFIED. Never cleared by a sync.
+  verifiedAt      DateTime?
+  /// Stripe's own last_error.code, for the French message and for support.
+  lastErrorCode   String?
+  /// Which check this session ran. Audit only.
+  variant             IdentityVariant  @default(DOCUMENT_AND_SELFIE)
+  /// THE USER ASKED. Ours, always writable, and the audit record of an Article 17 request.
+  /// Distinct from `redactionStatus`, which is what STRIPE did and can be null when redaction
+  /// was impossible — a CANCELED session cannot be redacted at all.
+  erasureRequestedAt  DateTime?
+  /// What Stripe did. Synced by the `identity.verification_session.redacted` webhook.
+  redactionStatus     RedactionStatus?
+  /// Stamped once when a selfie FRAUD code lands, and NEVER cleared.
+  ///
+  /// 🛑 THIS EXISTS SO THE ERASURE ROUTE CANNOT LAUNDER THE FRAUD SIGNAL. The refusal in
+  /// `identity.service.ts`'s `start()` would naturally read `lastErrorCode`, but redaction
+  /// replaces PII fields with placeholders and whether `last_error.code` survives is NOT
+  /// verified — so a user could fail the face match, request erasure, and find the
+  /// document-only route open. Same pattern and same reason as `verifiedAt`: evidence that
+  /// something happened is a different kind of fact from a current status.
+  selfieFraudSignalAt DateTime?
+  /// CF4-39 (sub-project M). SESSION fields: `start()`'s upsert resets all five on a new
+  /// session. History lives in the admin audit log. `decidedByUserId` has NO relation on
+  /// purpose (same reasoning as Review.moderatedByUserId).
+  decision        IdentityDecision?
+  /// null for ACCEPTED.
+  decisionMotif   IdentityDecisionMotif?
+  /// Required when motif = OTHER; optional on ACCEPTED.
+  decisionNote    String?
+  decidedAt       DateTime?
+  decidedByUserId String?
+  lastSyncedAt    DateTime?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+enum BusinessVerificationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  DOCUMENTS_REQUIRED
+}
+
+enum BusinessDecisionMotif {
+  DIRIGEANT_MISMATCH
+  DOCUMENT_EXPIRED
+  DOCUMENT_ILLEGIBLE
+  INVALID_SIRET
+  INCORRECT_ADDRESS
+  OTHER
+}
+
+/// CF5-07: Business verification lifecycle and document metadata.
+/// Evidence table for legal unit verification, reviewed by platform admins.
+model BusinessVerification {
+  id                         String                     @id @default(uuid())
+  userId                     String                     @unique
+  status                     BusinessVerificationStatus @default(PENDING)
+
+  siren                      String                     @db.VarChar(9)
+  siret                      String?                    @db.VarChar(14)
+  denomination               String                     @db.VarChar(255)
+  legalForm                  String                     @db.VarChar(100)
+  establishmentAddress       String                     @db.Text
+  vatNumber                  String?                    @db.VarChar(50)
+  dirigeantName              String                     @db.VarChar(255)
+
+  registrationProofPath      String                     @db.Text
+  registrationProofName      String                     @db.VarChar(255)
+  registrationProofSizeBytes Int
+  insuranceProofPath         String?                    @db.Text
+  insuranceProofName         String?                    @db.VarChar(255)
+  insuranceProofSizeBytes    Int?
+
+  etatAdministratif          String?                    @default("A")
+  diffusible                 Boolean                    @default(true)
+  dirigeants                 Json?
+
+  decisionMotif              BusinessDecisionMotif?
+  decisionNote               String?                    @db.Text
+  decidedAt                  DateTime?                  @db.Timestamptz(6)
+  decidedByUserId            String?                    @db.Text
+
+  submittedAt                DateTime                   @default(now()) @db.Timestamptz(6)
+  verifiedAt                 DateTime?                  @db.Timestamptz(6)
+  createdAt                  DateTime                   @default(now()) @db.Timestamptz(6)
+  updatedAt                  DateTime                   @updatedAt @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status, submittedAt])
+  @@index([siren])
+}
+
+/// CMP-D1 / CMP-D2: Annual fiscal declaration (DAC7 compliance).
+model RepairerFiscalDeclaration {
+  id           String   @id @default(uuid())
+  userId       String   @unique
+  taxResidence String   @default("FR")
+  addressLine  String
+  postalCode   String
+  city         String
+  country      String   @default("FR")
+  nif          String?
+  hasNoNif     Boolean  @default(false)
+  birthCity    String?
+  birthCountry String?  @default("FR")
+  submittedAt  DateTime @default(now())
+  // The hand-authored migration 20261017233000 (applied in production) gave this column a database
+  // default; the schema says so too, so a migrate diff against production reports no drift.
+  updatedAt    DateTime @default(now()) @updatedAt
+
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+/// CMP-D3: Due diligence audit trail of fiscal information changes.
+model RepairerFiscalAuditLog {
+  id        String   @id @default(uuid())
+  userId    String
+  fieldName String
+  oldValue  String?
+  newValue  String?
+  changedAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, changedAt])
+}
+
+/// CMP-D4: Statutory annual recap sent to repairers.
+model RepairerDac7Recap {
+  id          String   @id @default(uuid())
+  userId      String
+  taxYear     Int
+  sentAt      DateTime @default(now())
+  totalCents  Int
+  ordersCount Int
+  status      String   @default("SENT") // 'SENT' | 'BLOCKED'
+  channel     String   @default("EMAIL_AND_INAPP")
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, taxYear])
+  @@index([taxYear, status])
+}
+
+/// One thread per réparateur per demande. NOT per offer — `Offer`'s uniqueness is
+/// partial (`status: "SENT"`, `deletedAt: null`), so a réparateur may hold many
+/// historical offers on one demande, and keying on offerId would split the thread
+/// every time he re-quoted. See the design's §4.2.
+model Conversation {
+  id                 String    @id @default(uuid())
+  demandeId          String?
+  clientUserId       String
+  /// Denormalised, exactly as Commande.repairerUserId is and for the same reason: a
+  /// join a moderation soft-delete can break is not something to discover while
+  /// rendering an inbox.
+  repairerUserId     String
+  /// Null until the first message. The inbox filters on it, so a conversation
+  /// opened and abandoned exists without appearing anywhere. Also the ORDER key,
+  /// which is why it is stored rather than derived from the message list.
+  lastMessageAt      DateTime?
+  clientLastReadAt   DateTime?
+  repairerLastReadAt DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  deletedAt          DateTime?
+
+  demande  Demande?             @relation(fields: [demandeId], references: [id], onDelete: Cascade)
+  client   User                 @relation("ConversationClient", fields: [clientUserId], references: [id], onDelete: Cascade)
+  repairer User                 @relation("ConversationRepairer", fields: [repairerUserId], references: [id], onDelete: Cascade)
+  messages Message[]
+  reports  ConversationReport[]
+
+  @@unique([demandeId, repairerUserId])
+  @@index([clientUserId, lastMessageAt])
+  @@index([repairerUserId, lastMessageAt])
+}
+
+model Message {
+  id             String      @id @default(uuid())
+  conversationId String
+  /// Null for a SYSTEM message. CF-42: the automatic « Paiement effectué » line has no
+  /// human author, and the alternatives were worse -- a synthetic client-side bubble
+  /// leaves Conversation.lastMessageAt null and the thread never reaches either inbox,
+  /// and a service-account User becomes a real account that can surface in the
+  /// réparateur directory.
+  senderUserId   String?
+  kind           MessageKind @default(USER)
+  body           String
+  photoPath      String?
+  documentPath   String?
+  documentName   String?
+  documentSizeBytes Int?
+  createdAt      DateTime    @default(now())
+  /// Moderation. A soft delete keeps the evidence a report rests on.
+  deletedAt      DateTime?
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User?        @relation(fields: [senderUserId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
+  /// This index IS the rate limiter. No second ledger table -- Message is its own. A
+  /// SYSTEM row has a null sender and is therefore never rate-limited, which is correct:
+  /// nothing a user does emits one.
+  @@index([senderUserId, createdAt])
+}
+
+/// Piece 3. Created in piece 1's migration because the whole étape ships one.
+/// One review per commande, which makes a duplicate structurally impossible rather
+/// than guarded, and ties every review to money that actually moved.
+model Review {
+  id                  String    @id @default(uuid())
+  commandeId          String    @unique
+  authorUserId        String
+  repairerUserId      String
+  rating              Int
+  qualityRating       Int?
+  delayRating         Int?
+  communicationRating Int?
+  comment             String?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  deletedAt           DateTime?
+  /// CF4-37 (sub-project L). « Hidden » IS deletedAt; these three are the trail of the hide,
+  /// written and cleared together by AdminReviewsService. Null motif with deletedAt set = a
+  /// row hidden before L (« motif non renseigné »).
+  moderationMotif     ReviewModerationMotif?
+  /// Required when moderationMotif = OTHER (enforced by hideReviewInputSchema).
+  moderationNote      String?
+  /// NO relation on purpose: deleting the moderator's account must not erase the trail
+  /// (same reasoning as Demande.hiddenByUserId).
+  moderatedByUserId   String?
+
+  commande Commande @relation(fields: [commandeId], references: [id], onDelete: Cascade)
+  author   User     @relation("ReviewAuthor", fields: [authorUserId], references: [id], onDelete: Cascade)
+  repairer User     @relation("ReviewRepairer", fields: [repairerUserId], references: [id], onDelete: Cascade)
+
+  /// The aggregate's groupBy reads exactly this pair. There is deliberately NO
+  /// rating column on RepairerProfile: the aggregate is derived, see the design §4.4.
+  @@index([repairerUserId, deletedAt])
+}
+
+/// Piece 2. Created here for the same reason as Review.
+model ConversationReport {
+  id                 String    @id @default(uuid())
+  conversationId     String
+  reporterUserId     String
+  /// Denormalised so the admin list needs no derivation of "the other party".
+  reportedUserId     String
+  reason             String
+  createdAt          DateTime  @default(now())
+  resolvedAt         DateTime?
+
+  assignedToUserId   String?
+  assignedAt         DateTime?
+  resolvedByUserId   String?
+  resolutionVerdict  String?
+  resolutionNote     String?
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  reporter     User         @relation("ReportReporter", fields: [reporterUserId], references: [id], onDelete: Cascade)
+  reported     User         @relation("ReportReported", fields: [reportedUserId], references: [id], onDelete: Cascade)
+
+  @@index([resolvedAt, createdAt])
+  @@index([assignedToUserId, resolvedAt])
+}
+
+/// Piece 2. Directional by row; the SERVICE reads it in both directions, so one row
+/// closes the channel both ways. See the design's §8.
+model Block {
+  id            String   @id @default(uuid())
+  blockerUserId String
+  blockedUserId String
+  createdAt     DateTime @default(now())
+
+  blocker User @relation("BlockBlocker", fields: [blockerUserId], references: [id], onDelete: Cascade)
+  blocked User @relation("BlockBlocked", fields: [blockedUserId], references: [id], onDelete: Cascade)
+
+  @@unique([blockerUserId, blockedUserId])
+  @@index([blockedUserId])
+}
+
+/// `CF-18`. A client's saved réparateurs. Shaped on `Block` directly above: two relations
+/// to User, a composite unique making a duplicate structurally impossible, a HARD
+/// delete because unfavouriting is deleting — there is no evidence here worth keeping — and
+/// `Block`'s REVERSE-DIRECTION index, `@@index([blockedUserId])`.
+///
+/// 🛑 THAT LAST ONE WAS MISSING UNTIL 2026-08-31, while this comment already claimed the model was
+/// « shaped on `Block` ». Two readers need it and neither is the list above:
+/// `users.service.ts`'s `deleteAccount` scrubs `OR: [{ userId }, { repairerUserId: userId }]`, whose
+/// second branch had no index at all; and Postgres does NOT auto-index a referencing column, so
+/// every `ON DELETE CASCADE` from `user` sequential-scanned this table once per deleted parent.
+/// Free to add here because migration 27 was written and not yet applied anywhere — after it
+/// applies, the same two lines cost a migration 28.
+///
+/// `repairerUserId` addresses `User.id`, NOT `RepairerProfile.id`, matching
+/// `RepairerCardDto`'s own note that every consumer addresses users.
+model FavoriteRepairer {
+  id             String   @id @default(uuid())
+  userId         String
+  repairerUserId String
+  createdAt      DateTime @default(now())
+
+  user     User @relation("FavRepairerOwner", fields: [userId], references: [id], onDelete: Cascade)
+  repairer User @relation("FavRepairerTarget", fields: [repairerUserId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, repairerUserId])
+  @@index([userId, createdAt])
+  @@index([repairerUserId])
+}
+
+/// `CF-19` and `CF-27` are ONE table. A client favouriting an annonce and a réparateur
+/// favouriting one are the same stored row surfaced in two modes — see the design §16 for
+/// why that is not a scope reduction: `demandes.service.ts` refuses the feed without
+/// `repairerEnabled`, so a client-only account has no annonce to see in the first place.
+///
+/// 🛑 `@@index([demandeId])` is the reverse-direction index `Block` carries and this model was
+/// missing until 2026-08-31 — see `FavoriteRepairer` above for the full reasoning. Here it is the
+/// cascade alone that needs it: deleting a `Demande` had to sequential-scan this table, and
+/// Postgres does not index a referencing column for you.
+model FavoriteDemande {
+  id        String   @id @default(uuid())
+  userId    String
+  demandeId String
+  createdAt DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  demande Demande @relation(fields: [demandeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, demandeId])
+  @@index([userId, createdAt])
+  @@index([demandeId])
+}
+
+/// In-app notifications for both app modes. Emitted by all eight types of events the
+/// design identifies, and consumed by the bell icon and its list. See the design's §3.
+model Notification {
+  id             String           @id @default(uuid())
+  userId         String
+  /// Which hat the RECIPIENT wears for this event. Stored rather than derived: four of
+  /// the eight types fire for BOTH parties, so `type` alone cannot say whose list a row
+  /// belongs in, and a read-time answer needs a join per row. See the design §3.1.
+  mode           Mode
+  type           NotificationType
+  /// Snapshots, taken at emit time. Recorded rather than joined, the reasoning
+  /// Commande.transferredCents already carries in this schema: a displayName edit or a
+  /// demande retitle must not rewrite what a notification said last month. See §3.2.
+  actorName      String?
+  subject        String?
+  amountCents    Int?
+  step           CommandeStep?
+  /// Routing targets. NO foreign keys, deliberately: a cascade would delete notification
+  /// history as a side effect of deleting something else, which is the reason
+  /// Commande.refundedByUserId already gives for the same choice. See §3.4.
+  demandeId      String?
+  commandeId     String?
+  conversationId String?
+  /// The message body is JOINED on this at read time rather than snapshotted, so a
+  /// moderation soft-delete actually takes effect on this surface. The ONE deliberate
+  /// exception to the snapshot rule above. See §3.5.
+  messageId      String?
+  readAt         DateTime?
+  createdAt      DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// At most ONE unread message row per conversation, as a DATABASE rule rather than a
+  /// convention the emitter is trusted to keep: twenty messages in one thread would
+  /// otherwise bury everything else under twenty rows. Same technique as Offer's partial
+  /// unique index, and the reason `partialIndexes` is already a preview feature in this
+  /// schema. See §3.3.
+  @@unique([userId, conversationId], where: { type: "MESSAGE_RECEIVED", readAt: null })
+  @@index([userId, mode, createdAt])
+  @@index([userId, mode, readAt])
+}
+
+/// `CF-44`. Keep in step with `pushPlatformSchema` in packages/shared; `push-platform-parity.spec.ts`
+/// enforces both directions.
+enum PushPlatform {
+  IOS
+  ANDROID
+}
+
+/// `CF-44`, push notifications. Spec: docs/superpowers/specs/2026-09-07-cf-44-push-notifications-design.md §3.
+model PushToken {
+  id         String       @id @default(uuid())
+  userId     String
+  /// The Expo push token, `ExponentPushToken[...]`. UNIQUE ON ITS OWN, not per user: one phone
+  /// has one token, so a second account signing in on the same device REASSIGNS it by upsert.
+  /// That is also what makes a failed unregister at sign-out harmless. Spec §3.1.
+  token      String       @unique
+  platform   PushPlatform
+  createdAt  DateTime     @default(now())
+  /// Re-stamped by every registration. The app registers on every cold start, so this is
+  /// « last launch on this device ».
+  lastSeenAt DateTime     @default(now())
+  /// Set when Expo reports DeviceNotRegistered for this token (ticket or receipt). Cleared by
+  /// the next registration. Disabled rather than deleted so a token that comes back resumes
+  /// without a new row. Spec §3.2.
+  disabledAt DateTime?
+  soundChannel String?
+
+  user    User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tickets PushTicket[]
+
+  @@index([userId])
+}
+
+/// One row per push Expo ACCEPTED, until the six-hourly cron fetches its receipt. Spec §3.3.
+model PushTicket {
+  /// Expo's ticket id, verbatim. It is the key the receipts endpoint takes.
+  id        String   @id
+  tokenId   String
+  createdAt DateTime @default(now())
+
+  token PushToken @relation(fields: [tokenId], references: [id], onDelete: Cascade)
+
+  @@index([createdAt])
+}
+
+/// Ch.8's objective sentence requires every admin action to be « historisé ».
+/// Append-only: no update and no delete path exists anywhere in the codebase.
+model AdminAuditLog {
+  id String @id @default(cuid())
+
+  /// 🛑 NULLABLE + SetNull — the FIRST non-Cascade foreign key onto User in this schema,
+  /// and it is deliberate. All 27 other User relations cascade; an audit row that
+  /// cascaded when the actor is deleted would erase the record of what that actor did,
+  /// which is the only thing the row exists for. Restrict was rejected because it makes
+  /// an admin account permanently undeletable, which somebody would work around.
+  ///
+  /// This is NOT the per-table SetNull the standing constraint warns against: that
+  /// warning is about preserving referential meaning for moderation, where nulling keys
+  /// leaves a queue pointing at nothing. This row is meant to be self-contained and
+  /// never joined for its truth, which is why actorEmail is denormalised beside it.
+  actorUserId String?
+  actor       User?   @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+  actorEmail  String
+  /// CF4-40. The actor's staff role when the action ran. Null on rows written before N.
+  actorRole   String?
+
+  /// Constrained by adminAuditActionSchema in packages/shared, not by a Postgres enum:
+  /// pieces B-F will add dozens of actions and none of them should cost a migration.
+  action     String
+  targetType String?
+  targetId   String?
+
+  /// No `outcome` enum: it is derivable via auditOk(statusCode), and two stored fields
+  /// can disagree where one derived value cannot.
+  statusCode Int
+
+  /// 🛑 Must never carry PII beyond what the action needs. Json accepts anything, so the
+  /// rule lives in AdminAuditService, which is the only writer.
+  detail Json?
+
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([targetType, targetId])
+  @@index([actorUserId])
+}
+
+
+enum TipCategory {
+  CLIENT
+  REPAIRER
+  ALL
+}
+
+model Tip {
+  id        String      @id @default(uuid())
+  text      String
+  category  TipCategory
+  active    Boolean     @default(true)
+  imageUrl  String?
+  linkUrl   String?
+  createdAt DateTime    @default(now())
+  /// CF4-38 (sub-project L). Optional display window: null = open bound; endsAt EXCLUSIVE.
+  /// Eligibility is tipState() in @revime/shared, shared by /tips/daily and the admin list.
+  startsAt  DateTime?
+  endsAt    DateTime?
+
+  @@index([category, active])
+}
+
+/// CF4-37 (sub-project L). Why an admin hid a review. There is deliberately no « negative
+/// review » motif: that is how « pas de suppression parce qu'un avis est négatif » is enforced.
+enum ReviewModerationMotif {
+  ABUSIVE
+  PERSONAL_DATA
+  OFF_TOPIC
+  FAKE
+  OTHER
+}
+
+enum DisputeStatus {
+  OPEN
+  IN_REVIEW
+  RESOLVED_REFUNDED
+  RESOLVED_RELEASED
+  RESOLVED_DISMISSED
+}
+
+enum DisputeInitiator {
+  CLIENT
+  REPAIRER
+  ADMIN
+  STRIPE
+}
+
+/// CF4-D (spec §2), migration 20260929020000. Why the admin chose to refund the way he
+/// did. Keep in step with `refundMotifSchema` in packages/shared.
+enum RefundMotif {
+  CLIENT_CANCELLED
+  REPAIRER_CANCELLED
+  REPAIR_NOT_DONE
+  REPAIR_NONCONFORMING
+  PARCEL_LOST_OR_DAMAGED
+  DISPUTE_DECISION
+  OTHER
+}
+
+enum DisputeMotif {
+  REPAIR_NON_CONFORMING
+  ITEM_DAMAGED
+  REPAIR_INCOMPLETE
+  DEADLINE_MISSED
+  CLIENT_UNREACHABLE
+  ITEM_NOT_AS_DESCRIBED
+  ITEM_NOT_HANDED_OVER
+  SERVICE_DISAGREEMENT
+  OTHER
+}
+
+enum DisputeSpace {
+  CLIENT
+  REPAIRER
+}
+
+enum DisputeMessageAuthor {
+  PARTY
+  REVIME
+}
+
+/// Stage 6 Piece D (§8.7), amended CF4-J §4.1. Centralises all order disputes and administrative arbitration.
+model Dispute {
+  id                 String           @id @default(uuid())
+  number             Int              @unique @default(autoincrement())
+  commandeId         String           @unique
+  status             DisputeStatus    @default(OPEN)
+  initiator          DisputeInitiator @default(ADMIN)
+  openedByUserId     String?
+  motif              DisputeMotif?
+  reason             String
+  description        String?
+  evidencePhotos     Json?
+
+  clientLastReadAt   DateTime?
+  repairerLastReadAt DateTime?
+
+  assignedToUserId   String?
+  assignedAt         DateTime?
+
+  resolvedByUserId   String?
+  resolvedAt         DateTime?
+  verdict            String?
+  resolutionNote     String?
+
+  adminNotes         Json?
+
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+
+  commande           Commande         @relation(fields: [commandeId], references: [id], onDelete: Cascade)
+  messages           DisputeMessage[]
+
+  @@index([status, createdAt])
+  @@index([assignedToUserId, status])
+}
+
+/// CF4-J §4.1. Confidential messages in each party's private dispute space.
+model DisputeMessage {
+  id                String               @id @default(uuid())
+  disputeId         String
+  space             DisputeSpace
+  author            DisputeMessageAuthor
+  senderUserId      String?
+  body              String               @default("")
+  photoPath         String?
+  documentPath      String?
+  documentName      String?
+  documentSizeBytes Int?
+  createdAt         DateTime             @default(now())
+  deletedAt         DateTime?
+
+  dispute           Dispute              @relation(fields: [disputeId], references: [id], onDelete: Cascade)
+
+  @@index([disputeId, space, createdAt])
+}
+
+/// CF4-I, migration 20260930050000 (spec §4.1). A client's post-payment cancellation request.
+/// `Commande.cancellationRequestedAt` is the freeze flag every guard reads - non-null exactly
+/// while a PENDING row exists here (same shape as `disputedAt` beside `Dispute` above). At most
+/// one PENDING row per commande, enforced by a partial unique index (I11) rather than in code,
+/// so a race loses at the database rather than in application logic.
+model CancellationRequest {
+  id                String                    @id @default(uuid())
+  commandeId        String
+  requestedByUserId String
+  reason            CancellationReason
+  /// Max 500 (schema-enforced), null when the client left it blank - allowed for every
+  /// reason except OTHER, which `createCancellationRequestSchema` requires a comment for.
+  comment           String?
+  status            CancellationRequestStatus @default(PENDING)
+  createdAt         DateTime                  @default(now())
+  decidedAt         DateTime?
+  decidedByUserId   String?
+  /// Max 300 (schema-enforced). Shown to the client verbatim on a refusal (I8).
+  refusalNote       String?
+
+  commande          Commande                  @relation(fields: [commandeId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
+}
+
+/// Stage 6 Piece E (§8.9). Brand catalog entity.
+model Brand {
+  id          String          @id @default(uuid())
+  name        String          @unique
+  slug        String          @unique
+  logoUrl     String?
+  active      Boolean         @default(true)
+  sortOrder   Int             @default(0)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  categories  BrandCategory[]
+  models      DeviceModel[]
+
+  @@index([active, sortOrder])
+}
+
+/// Join table for Brand to Category scoping.
+model BrandCategory {
+  id          String    @id @default(uuid())
+  brandId     String
+  categoryId  String
+  createdAt   DateTime  @default(now())
+
+  brand       Brand     @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  category    Category  @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([brandId, categoryId])
+  @@index([categoryId])
+  @@index([brandId])
+}
+
+/// Stage 6 Piece E (§8.9). Device model catalog entity.
+model DeviceModel {
+  id          String    @id @default(uuid())
+  brandId     String
+  name        String
+  slug        String
+  categoryId  String?
+  active      Boolean   @default(true)
+  sortOrder   Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  brand       Brand     @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  category    Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  @@unique([brandId, slug])
+  @@index([brandId, active, sortOrder])
+  @@index([categoryId])
+}
+
+/// Feature F12 (§8.9). Fault type catalog entity.
+model FaultType {
+  id          String   @id @default(uuid())
+  categoryId  String
+  slug        String
+  labelFr     String
+  description String?
+  icon        String?
+  sortOrder   Int      @default(0)
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  category    Category  @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  demandes    Demande[]
+
+  @@unique([categoryId, slug])
+  @@index([categoryId, active, sortOrder])
+}
+
+/// CF5-09. Staff invitation flow.
+model StaffInvitation {
+  id              String      @id @default(cuid())
+  email           String      @db.VarChar(255)
+  role            String      @db.VarChar(50)
+  firstName       String?     @db.VarChar(100)
+  lastName        String?     @db.VarChar(100)
+  tokenHash       String      @unique @db.VarChar(64)
+  invitedById     String      @db.Text
+  invitedBy       User        @relation("StaffInvitationsCreated", fields: [invitedById], references: [id], onDelete: Restrict)
+  expiresAt       DateTime    @db.Timestamptz(6)
+  acceptedAt      DateTime?   @db.Timestamptz(6)
+  revokedAt       DateTime?   @db.Timestamptz(6)
+  createdAt       DateTime    @default(now()) @db.Timestamptz(6)
+  updatedAt       DateTime    @updatedAt @db.Timestamptz(6)
+
+  @@index([email])
+  @@index([expiresAt])
+}
+
+model ConsentProof {
+  id                 String           @id @default(uuid())
+  userId             String
+  kind               ConsentProofKind
+  cguVersion         String?
+  waiverTextVersion  String?
+  /// V9 B1: set on `PRIVACY_ACCEPTANCE` proofs.
+  privacyVersion     String?
+  legalTextSnapshot  String
+  actionProof        String
+  commandeId         String?
+  ipAddress          String?
+  userAgent          String?
+  checksum           String
+  metadata           Json?
+  timestamp          DateTime         @default(now())
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Restrict)
+  commande  Commande? @relation(fields: [commandeId], references: [id], onDelete: Restrict)
+
+  @@index([userId, timestamp])
+  @@index([commandeId])
+  @@index([kind])
+}
+
+/// F2: Tracks administrative broadcasts, targeted notifications, and mass emails.
+model AdminBroadcast {
+  id              String       @id @default(uuid())
+  operatorId      String
+  channelEmail    Boolean      @default(false)
+  channelPush     Boolean      @default(false)
+  targetType      String       // "INDIVIDUAL" or "SEGMENT"
+  targetFilter    Json         // Snapshot of filter criteria
+  templateKey     String       @default("CUSTOM")
+  subject         String
+  body            String       @db.Text
+  totalRecipients Int
+  sentEmailCount  Int          @default(0)
+  sentPushCount   Int          @default(0)
+  createdAt       DateTime     @default(now())
+
+  operator        User         @relation("BroadcastOperator", fields: [operatorId], references: [id], onDelete: Restrict)
+
+  @@index([createdAt])
+  @@index([operatorId])
+}
+
+enum PromoType {
+  FIXED_AMOUNT
+  PERCENTAGE
+}
+
+enum PromoStatus {
+  ACTIVE
+  PAUSED
+  EXPIRED
+  EXHAUSTED
+}
+
+enum ReferralRewardStatus {
+  PENDING_COMPLETION
+  REWARDED
+  REVOKED
+}
+
+/// Feature F3: Promotional campaigns and user referral codes
+model PromoCode {
+  id               String       @id @default(uuid())
+  code             String       @unique
+  description      String?
+  type             PromoType    @default(FIXED_AMOUNT)
+  valueCents       Int
+  maxDiscountCents Int?
+  minOrderCents    Int          @default(0)
+  startsAt         DateTime     @default(now())
+  expiresAt        DateTime?
+  maxUsesTotal     Int?
+  maxUsesPerUser   Int          @default(1)
+  firstOrderOnly   Boolean      @default(false)
+  status           PromoStatus  @default(ACTIVE)
+
+  isReferral       Boolean      @default(false)
+  referrerId       String?
+  referrer         User?        @relation("UserReferralCodes", fields: [referrerId], references: [id], onDelete: SetNull)
+
+  usages           PromoUsage[]
+  rewardsIssued    ReferralReward[] @relation("RewardVoucher")
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  @@index([status])
+  @@index([isReferral])
+  @@index([referrerId])
+}
+
+/// Immutable ledger of every promo code redemption
+model PromoUsage {
+  id            String     @id @default(uuid())
+  promoCodeId   String
+  userId        String
+  commandeId    String     @unique
+  discountCents Int
+  usedAt        DateTime   @default(now())
+
+  promoCode     PromoCode  @relation(fields: [promoCodeId], references: [id], onDelete: Restrict)
+  user          User       @relation(fields: [userId], references: [id], onDelete: Restrict)
+  commande      Commande   @relation(fields: [commandeId], references: [id], onDelete: Restrict)
+
+  @@index([userId])
+  @@index([promoCodeId])
+}
+
+/// Tracks peer-to-peer referral relationships and reward status
+model ReferralReward {
+  id                 String               @id @default(uuid())
+  referrerId         String
+  refereeId          String
+  firstCommandeId    String               @unique
+  rewardVoucherId    String?
+  status             ReferralRewardStatus @default(PENDING_COMPLETION)
+  rewardedAt         DateTime?
+  createdAt          DateTime             @default(now())
+
+  referrer           User                 @relation("ReferrerRewards", fields: [referrerId], references: [id], onDelete: Restrict)
+  referee            User                 @relation("RefereeRewards", fields: [refereeId], references: [id], onDelete: Restrict)
+  rewardVoucher      PromoCode?           @relation("RewardVoucher", fields: [rewardVoucherId], references: [id], onDelete: SetNull)
+
+  @@index([referrerId])
+  @@index([refereeId])
+}
+
+enum AdminAlertType {
+  DISPUTE_NEW
+  REPORT_SEVERE
+  PAYMENT_FAILED
+  PARCEL_INCIDENT
+  /// V7 A11 (U2): an account locked by failed logins or wrong codes.
+  ACCOUNT_LOCKED
+  /// V7 A11 (U2): an IP blocked after failed logins across accounts.
+  IP_BLOCKED
+  /// V7 A11 (U2b): a user answered « Ce n'est pas moi ».
+  ACCOUNT_SECURED
+  /// V9 U3: an account deletion could not revoke its Apple or Google sign-in.
+  PROVIDER_REVOKE_FAILED
+}
+
+enum AdminAlertSeverity {
+  CRITICAL
+  HIGH
+  MEDIUM
+}
+
+/// Operational administrative alert ledger for critical incidents, disputes, and payment failures
+model AdminAlert {
+  id           String             @id @default(uuid())
+  type         AdminAlertType
+  severity     AdminAlertSeverity @default(HIGH)
+  title        String
+  message      String
+  targetType   String
+  targetId     String
+  link         String
+  isRead       Boolean            @default(false)
+  readAt       DateTime?
+  readByUserId String?
+  emailSent    Boolean            @default(false)
+  emailSentAt  DateTime?
+  metadata     Json?
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+
+  readBy       User?              @relation("AlertsReadBy", fields: [readByUserId], references: [id], onDelete: SetNull)
+
+  @@index([isRead, createdAt])
+  @@index([type, targetId, createdAt])
+  @@index([severity])
+  @@index([createdAt])
+}
+
+model PlatformSettings {
+  id                      String    @id @default("singleton")
+  protectionFixedCents    Int       @default(290)
+  protectionRateBp        Int       @default(450)
+  commissionRateBp        Int       @default(0)
+  payoutHoldHours         Int       @default(48)
+  offerValidityHours      Int       @default(168)
+  paymentHoldHours        Int       @default(2)
+  deliveryHomeEnabled     Boolean   @default(true)
+  deliveryWorkshopEnabled Boolean   @default(true)
+  deliveryParcelEnabled   Boolean   @default(true)
+  carrierMondialRelay     Boolean   @default(true)
+  carrierChronopost       Boolean   @default(true)
+  carrierColissimo        Boolean   @default(true)
+  carrierRelaisColis      Boolean   @default(true)
+  maxInsurableValueCents  Int       @default(100000)
+  /// V7 D5 (U9b): the ACTIVE version, one of `LegalDocumentVersion` (kind CGU); the dashboard's dropdown sets it.
+  cguCurrentVersion       String    @default("2026-10-10")
+  cguForceReaccept        Boolean   @default(false)
+  /// V9 B1 (`DEC9-05` (1)): the active privacy-policy version; bumped by us with the compiled text.
+  privacyCurrentVersion   String    @default("2026-11-19")
+  /// V7 D5 (U9b): the active mentions légales version, one of `LegalDocumentVersion` (kind MENTIONS_LEGALES).
+  legalNoticeVersion      String    @default("2026-10-10")
+  maintenanceEnabled      Boolean   @default(false)
+  maintenanceMessage      String    @default("Plateforme en cours de maintenance. De retour très prochainement.")
+  /// F7: the admin alert channel toggles (email and bell, per category). Json, not eight columns:
+  /// the set is owned by `adminAlertPreferencesSchema` in @revime/shared, which fills every missing
+  /// key with its default, so a null here means « all defaults ». It used to live in the memory of
+  /// one API process and was lost at every deploy.
+  alertPreferences        Json?
+  updatedAt               DateTime  @updatedAt
+  updatedByUserId         String?
+}
+
+/// V7 D5 (U9b). Which legal document a published version belongs to.
+enum LegalDocumentKind {
+  CGU
+  MENTIONS_LEGALES
+}
+
+/// V7 D5 (U9b, DEC7-24). One published version of the CGU or the mentions légales: the client's PDF
+/// in the private `legal-documents` bucket at `<slug>/<version>.pdf`. Never deleted or replaced,
+/// because consent proofs name the version; which one is active lives on PlatformSettings.
+model LegalDocumentVersion {
+  id                String            @id @default(uuid())
+  kind              LegalDocumentKind
+  /// A date, YYYY-MM-DD, unique per document.
+  version           String
+  storagePath       String
+  fileName          String
+  sizeBytes         Int
+  /// SHA-256 of the PDF's bytes, hex, read from storage at publish.
+  sha256            String
+  /// What changed, shown on the re-acceptance screen. CGU only.
+  summary           String?
+  publishedAt       DateTime          @default(now())
+  publishedByUserId String?
+
+  @@unique([kind, version])
+}
+
+/// V7 A11 / D3 (U2). Which counter an AuthThrottle row is.
+enum AuthThrottleScope {
+  /// Failed password logins and wrong two-factor codes, keyed by normalised e-mail.
+  LOGIN_ACCOUNT
+  /// Wrong e-mail or SMS codes, keyed by normalised e-mail. Its own ladder.
+  CODE_ACCOUNT
+  /// Failed logins, wrong e-mail codes and reset requests from one client IP (an SMS check is signed in, so it has none).
+  IP
+  /// « Mot de passe oublié » requests, keyed by normalised e-mail.
+  RESET_ACCOUNT
+}
+
+enum AuthUnlockReason {
+  ADMIN
+  PASSWORD_RESET
+}
+
+/// V7 A11 / D3 (U2). One lock-out counter: the state `auth/throttle/policy.ts` reads and writes.
+/// Replaces the in-memory Map of CF3-14, which every deploy emptied. Keyed by e-mail even for
+/// addresses with no account, so a lock behaves the same whether the account exists or not. A row
+/// 24 h past its last failure and lock is the empty state, so the store deletes such rows.
+model AuthThrottle {
+  scope           AuthThrottleScope
+  key             String
+  failures        Int               @default(0)
+  level           Int               @default(0)
+  windowStartedAt DateTime?
+  lastFailureAt   DateTime?
+  lockedUntil     DateTime?
+  /// IP rows only: distinct e-mails tried, capped at 50, for the alert.
+  recentKeys      String[]          @default([])
+  updatedAt       DateTime          @updatedAt
+
+  @@id([scope, key])
+  @@index([lastFailureAt])
+}
+
+/// V7 A11 (U2). The history of locks on real accounts and of IP blocks, for the user sheet and
+/// alerts. No row for an e-mail with no account: that would store strangers' addresses for good.
+model AuthLockEvent {
+  id               String            @id @default(uuid())
+  /// V7 U2b: SECURED is a « Ce n'est pas moi », shown in the same history on the user sheet.
+  kind             AuthLockEventKind @default(LOCK)
+  scope            AuthThrottleScope
+  /// The normalised e-mail, or the IP for an IP block.
+  key              String
+  /// Null for an IP block.
+  userId           String?
+  level            Int
+  lockedUntil      DateTime
+  createdAt        DateTime          @default(now())
+  unlockedAt       DateTime?
+  unlockedByUserId String?
+  unlockReason     AuthUnlockReason?
+
+  @@index([userId, createdAt])
+  @@index([scope, key, createdAt])
+}
+
+enum AuthLockEventKind {
+  LOCK
+  SECURED
+}
+
+/// V7 A11 (U2b). A device a user has signed in from with a password. The id itself is never stored:
+/// `deviceHash` is its SHA-256. A device unseen for 180 days counts as new again. `notifiedAt` is
+/// when its « Nouvelle connexion » e-mail went out, which is what the 3-per-24-h cap counts.
+model KnownDevice {
+  id          String    @id @default(uuid())
+  userId      String
+  deviceHash  String
+  label       String
+  firstSeenAt DateTime  @default(now())
+  lastSeenAt  DateTime  @default(now())
+  notifiedAt  DateTime?
+
+  @@unique([userId, deviceHash])
+  @@index([userId, notifiedAt])
+}

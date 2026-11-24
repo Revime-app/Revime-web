@@ -1,0 +1,47 @@
+{
+  "results": [
+    {
+      "siren": "980491005",
+      "nom_complet": "ATELIER FIXTURE (FIXTURE)",
+      "nom_raison_sociale": null,
+      "nature_juridique": "1000",
+      "etat_administratif": "A",
+      "statut_diffusion": "O",
+      "date_creation": "2023-10-12",
+      "date_fermeture": null,
+      "dirigeants": [
+        {
+          "nom": "FIXTURE",
+          "prenoms": "CAMILLE",
+          "annee_de_naissance": "1989",
+          "date_de_naissance": "1989-09",
+          "qualite": null,
+          "nationalite": null,
+          "type_dirigeant": "personne physique"
+        }
+      ],
+      "siege": {
+        "siret": "98049100500016",
+        "adresse": "12 RUE DE LA FIXTURE 16000 ANGOULEME",
+        "code_postal": "16000",
+        "libelle_commune": "ANGOULEME",
+        "etat_administratif": "A",
+        "statut_diffusion_etablissement": "O",
+        "est_siege": true
+      },
+      "matching_etablissements": [
+        {
+          "siret": "98049100500016",
+          "adresse": "12 RUE DE LA FIXTURE 16000 ANGOULEME",
+          "etat_administratif": "A",
+          "statut_diffusion_etablissement": "O",
+          "est_siege": true
+        }
+      ]
+    }
+  ],
+  "total_results": 1,
+  "page": 1,
+  "per_page": 1,
+  "total_pages": 1
+}

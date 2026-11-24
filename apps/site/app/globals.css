@@ -1,0 +1,225 @@
+/*
+ * revime.fr. Colours are the charte graphique's five, nothing else (CHARTE_GRAPHIQUE_REVIME_VF.pdf;
+ * unlisted colours are « formellement proscrite »). Rouge Punch is spent in one place: the hanging
+ * article numbers, which are the documents' real structure. Links stay Bleu Ink, because Rouge Punch
+ * on white is under 4.5:1 for body-size text.
+ */
+:root {
+  --paper: #ffffff;
+  --ink: #25324f;      /* Bleu Ink */
+  --deep: #010524;     /* Bleu prusse */
+  --rule: #dfe2e2;     /* Platinum */
+  --red: #f61b39;      /* Rouge Punch */
+  --measure: 68ch;
+  --gutter: 16px;
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #010524;
+    --ink: #dfe2e2;
+    --deep: #dfe2e2;
+    --rule: #25324f;
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-google-sans), Arial, sans-serif;
+  font-size: 17px;
+  line-height: 1.6;
+}
+
+a {
+  color: inherit;
+  text-decoration-color: var(--red);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+}
+
+a:focus-visible {
+  outline: 3px solid var(--red);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+.skip {
+  position: absolute;
+  left: -9999px;
+}
+.skip:focus {
+  left: var(--gutter);
+  top: 12px;
+  background: var(--paper);
+  padding: 6px 10px;
+}
+
+.bar {
+  border-bottom: 1px solid var(--rule);
+  padding: 18px var(--gutter);
+}
+.bar__brand {
+  display: inline-flex;
+}
+.bar__brand img {
+  display: block;
+  height: 22px;
+  width: auto;
+}
+@media (prefers-color-scheme: dark) {
+  .bar__brand img {
+    filter: brightness(0) invert(0.9);
+  }
+}
+
+.page {
+  padding: 40px var(--gutter) 64px;
+}
+
+/* Documents: one reading column, with room on the left for the hanging numbers on wide screens. */
+.doc {
+  max-width: var(--measure);
+  margin: 0 auto;
+}
+
+.doc__head {
+  margin-bottom: 40px;
+}
+
+.doc__title {
+  font-weight: 600;
+  font-size: clamp(26px, 4.2vw, 36px);
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  color: var(--deep);
+  margin: 0 0 12px;
+}
+
+.doc__updated,
+.doc__lede {
+  margin: 0;
+}
+.doc__updated {
+  font-size: 15px;
+}
+
+.doc__section {
+  margin: 0 0 28px;
+}
+.doc__section--sub {
+  margin-top: -8px;
+}
+
+.doc__heading {
+  font-weight: 600;
+  font-size: 19px;
+  line-height: 1.35;
+  color: var(--deep);
+  margin: 36px 0 10px;
+}
+.doc__section--sub .doc__heading {
+  font-size: 17px;
+  margin-top: 24px;
+}
+
+.doc__num {
+  color: var(--red);
+  font-variant-numeric: tabular-nums;
+}
+
+@media (min-width: 960px) {
+  .doc__heading--numbered {
+    position: relative;
+  }
+  .doc__heading--numbered .doc__num {
+    position: absolute;
+    right: calc(100% + 20px);
+    white-space: nowrap;
+    text-align: right;
+  }
+}
+
+.doc p,
+.doc li {
+  margin: 0 0 10px;
+}
+.doc ul,
+.doc ol {
+  margin: 0 0 12px;
+  padding-left: 1.3em;
+}
+.doc li::marker {
+  color: var(--ink);
+}
+
+/* Home */
+.home {
+  max-width: var(--measure);
+  margin: 0 auto;
+}
+.home__title {
+  font-weight: 600;
+  font-size: clamp(44px, 9vw, 72px);
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: var(--deep);
+  margin: 0 0 16px;
+}
+.home__lede {
+  font-size: 20px;
+  margin: 0 0 48px;
+  max-width: 34ch;
+}
+.home__heading {
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--ink);
+  margin: 0 0 8px;
+}
+.index {
+  list-style: none;
+  margin: 0 0 40px;
+  padding: 0;
+  border-top: 1px solid var(--rule);
+}
+.index li {
+  border-bottom: 1px solid var(--rule);
+}
+.index a {
+  display: block;
+  padding: 14px 0;
+  font-size: 19px;
+  text-decoration: none;
+}
+.index a:hover {
+  text-decoration: underline;
+  text-decoration-color: var(--red);
+}
+
+.foot {
+  border-top: 1px solid var(--rule);
+  padding: 24px var(--gutter) 40px;
+  font-size: 15px;
+}
+.foot ul {
+  list-style: none;
+  margin: 0 auto;
+  padding: 0;
+  max-width: var(--measure);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+}

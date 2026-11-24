@@ -1,0 +1,27 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    // `scripts/seed-demo/*.mjs` is imported by five spec files under `test/`, and
+    // `include` already covers `scripts/**/*`. Without this, tsc cannot type a `.mjs`
+    // module at all: 12 x TS7016 "could not find a declaration file", plus 60 more
+    // errors purely cascading from those `any` imports. `checkJs` stays at its default
+    // of false, so tsc INFERS each module's exported types without reporting anything
+    // inside their bodies -- which is what is wanted here, because those bodies are
+    // reviewed production-write code and this is a test-config problem.
+    // Safe against the build: `npm run typecheck` is `--noEmit`, so `declaration: true`
+    // from tsconfig.base.json emits nothing, and `tsconfig.build.json` already excludes
+    // `test`, `scripts` and `*spec.ts` with a comment explaining exactly this split.
+    "allowJs": true,
+    "outDir": "./dist",
+    "baseUrl": "./",
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "removeComments": true,
+    "sourceMap": true,
+    "incremental": true
+  },
+  "include": ["src/**/*", "test/**/*", "scripts/**/*"],
+  "exclude": ["node_modules", "dist"]
+}

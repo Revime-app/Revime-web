@@ -1,0 +1,50 @@
+# Supabase pauses free-plan projects after ~7 days of low USER database activity,
+# which takes the whole API down with it (incident 2026-08-10: the pooler drops a
+# paused project, `prisma migrate deploy` fails, start:prod short-circuits, Render
+# crash-loops). Supabase's docs say "a few user requests to the database each day"
+# over the previous week is enough to prevent it, so this pings twice a day.
+#
+# It has to come from OUTSIDE the database: a pg_cron job inside Postgres is not
+# user activity and would not count.
+#
+# Caveat: GitHub disables scheduled workflows after 60 days of repo inactivity
+# (it emails the owner first). If this repo goes quiet for two months, re-enable
+# the schedule from the Actions tab.
+name: keepalive
+
+on:
+  schedule:
+    - cron: '17 5 * * *'
+    - cron: '17 17 * * *'
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: SELECT 1 through the pooler
+        env:
+          # Verbatim copy of the API's DATABASE_URL, so the two never drift.
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::error::DATABASE_URL secret is not set"
+            exit 1
+          fi
+          # Drop Prisma's ?pgbouncer=true: libpq rejects query parameters it does
+          # not recognise. The pooler host is IPv4-reachable; db.<ref> is not, so
+          # a GitHub runner can only get in this way.
+          conn="${DATABASE_URL%%\?*}"
+          for attempt in 1 2 3; do
+            if psql "$conn" -Atc 'select 1'; then
+              echo "keepalive ok (attempt $attempt)"
+              exit 0
+            fi
+            echo "attempt $attempt failed, retrying in 20s"
+            sleep 20
+          done
+          echo "::error::database unreachable after 3 attempts"
+          exit 1

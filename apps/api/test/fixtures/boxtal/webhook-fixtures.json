@@ -1,0 +1,23 @@
+{
+  "_comment": "Captured 2026-09-04 from the Boxtal SANDBOX (api.boxtal.build) by the §14.3 probe. The two .json bodies are byte-for-byte what Boxtal POSTed (user-agent boxtal-webhook); the signatures are the x-bxt-signature header values Boxtal sent with them. The secret is the SANDBOX subscription secret, test-only, never used in production. HMAC-SHA256(secret, raw body) encoded as lowercase hex reproduces each header exactly.",
+  "secret": "e6ca2bc345e3caf4a801460c46a51699cd54344a28715c94",
+  "encoding": "hex",
+  "fixtures": [
+    {
+      "file": "webhook-document-created.json",
+      "type": "DOCUMENT_CREATED",
+      "shippingOrderId": "2609041641POFR4ZVBFR",
+      "x-bxt-signature": "d74d0aa2bd951ce80629da91e556e78cd82e2095f1304460a992fc35065ca336",
+      "receivedAt": "2026-09-04T14:41:48.552Z",
+      "orderRespondedAt": "2026-09-04T14:41:47.420Z"
+    },
+    {
+      "file": "webhook-tracking-changed.json",
+      "type": "TRACKING_CHANGED",
+      "shippingOrderId": "2609041630POFR4ZV6FR",
+      "x-bxt-signature": "44538daeb86368d542817b030d38140bdd642652c727824d9e4b70e7d8cf9ea8",
+      "receivedAt": "2026-09-04T14:42:12.381Z",
+      "note": "Second tracking event for that order (16:40:03+02:00), history of two ANNOUNCED entries, location « Centre Courrier 34 »; delivered on Boxtal's retry after the first tunnel was unreachable."
+    }
+  ]
+}

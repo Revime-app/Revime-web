@@ -1,0 +1,21 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "rootDir": "./src",
+    // Keep the incremental build info INSIDE dist. nest-cli sets
+    // `deleteOutDir: true`, so dist is wiped before every build; with the build
+    // info left at the package root the two disagree - tsc reads it, concludes
+    // the output is current, emits nothing, and `nest build` exits 0 with an
+    // empty dist. That made every alternate build silently produce no
+    // `dist/main.js`. Inside dist they are deleted together, so a wiped output
+    // always forces a full emit.
+    "tsBuildInfoFile": "./dist/tsconfig.build.tsbuildinfo"
+  },
+  // `scripts` is excluded from the BUILD while `tsconfig.json` includes it for the
+  // TYPECHECK, and that split is the point: `scripts/baseline.ts` is a hand-run dev
+  // probe that must be typechecked but must NOT ship in `dist/`. Without this line the
+  // build fails `TS6059` -- the file is not under this config's `rootDir` of `./src` --
+  // which is exactly what CI caught, because `npm run typecheck` and `npm run build`
+  // read DIFFERENT tsconfigs here and only the build sets `rootDir`.
+  "exclude": ["node_modules", "test", "dist", "scripts", "**/*spec.ts"]
+}

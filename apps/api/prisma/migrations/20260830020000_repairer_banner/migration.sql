@@ -1,0 +1,35 @@
+-- Migration 25. CF-24: « Dans le profil réparateur, ajouter : … possibilité d'ajouter
+-- une bannière ».
+--
+-- ONE nullable column, no default, no backfill, no index.
+--
+-- 🛑 WHY THIS TABLE AND NOT `Profile`, WHICH ALREADY HOLDS `avatarPath`. A banner is
+-- réparateur PRESENTATION — the same category as `bio` and `displayName`, both of which
+-- live here — while an avatar is the person and serves both modes, which is why CF-23
+-- deliberately put it on `Profile`. A client-only account has no public fiche and no
+-- surface that draws a cover image, so the column would be unreachable data there.
+-- Practical consequence worth stating: `RepairerProfile` only exists once réparateur mode
+-- has been enabled, so both banner routes gate on that rather than letting Prisma raise
+-- P2025 on a missing row.
+--
+-- 🛑 NULLABLE IS LOAD-BEARING, NOT LAZINESS. `''` would give « no banner » two
+-- representations and the read path would have to test for both; `NOT NULL DEFAULT ''`
+-- would additionally rewrite every existing row for no gain. Measured against the live
+-- database before writing this, 2026-08-30: 11 non-deleted RepairerProfile rows, 9 with a
+-- bio, and 24 migrations applied with 0 unfinished — so this is purely additive and
+-- touches no existing value.
+--
+-- NO BACKFILL IS POSSIBLE, let alone wanted: there is no prior source for a banner
+-- anywhere in the schema or in storage. The column starts null for all 11 rows and the
+-- fiche publique keeps rendering its existing motif until a réparateur uploads one.
+--
+-- 🛑 DEPLOYING IS MIGRATING, and the command is NOT in `render.yaml` — a point every
+-- previous slice's notes got slightly wrong, including the handoff into this one, by
+-- citing `render.yaml:15`, which is a COMMENT. The real chain is two hops:
+-- `render.yaml`'s `startCommand` is `npm run start:prod -w @revime/api`, and that script
+-- in `apps/api/package.json` is `prisma migrate deploy && node dist/main`. Grepping
+-- `render.yaml` for `migrate deploy` therefore finds prose only, which is how a true claim
+-- comes to look stale. Verify 24 -> 25 against the live `_prisma_migrations` afterwards
+-- rather than reading it off a green deploy.
+
+ALTER TABLE "RepairerProfile" ADD COLUMN "bannerPath" TEXT;

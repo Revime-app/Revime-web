@@ -1,0 +1,48 @@
+name: ci
+on:
+  push: { branches: [main] }
+  pull_request:
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    # prisma.config.ts resolves env('DIRECT_URL') eagerly, so every prisma
+    # invocation needs the variable to exist even though generate never opens a
+    # connection. This placeholder is never dialled: CI stays database-free.
+    env:
+      DIRECT_URL: postgresql://placeholder:placeholder@localhost:5432/placeholder
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 24, cache: npm }
+      - run: npm ci
+      # The Prisma client generates into apps/api/src/generated, which is
+      # gitignored, so a fresh clone has nothing for tsc to resolve. api's build
+      # script does generate, but typecheck runs before build.
+      - run: npm exec -w @revime/api -- prisma generate
+      - run: npm run typecheck
+      - run: npm run build
+      # Deliberately not `npm run test`, which would run every workspace in full:
+      # the api's *.int.spec.ts files open real connections to Supabase
+      # (prisma.int.spec asserts RLS with $queryRaw), and this job is
+      # database-free by design, so they would fail on credentials rather than on
+      # code. Run them by hand with credentials, via `npm run test:integration
+      # -w @revime/api`.
+      #
+      # The api's unit half is safe here even though health/exceptions boot the
+      # whole AppModule: $connect() on the pg driver adapter is lazy, so it never
+      # dials until something queries, and these specs never do. Verified with
+      # DATABASE_URL unset entirely, which is what CI actually has.
+      #
+      # Both suites need the build above, which is what puts @revime/shared/dist
+      # in place. admin's suite owns the guard that keeps Better Auth's English
+      # error strings out of the French UI.
+      - run: npm run test -w @revime/admin
+      - run: npm run test:unit -w @revime/api
+        env:
+          # Europe/Paris, not the runner's UTC default, and it is the only thing
+          # that makes the DST guard in commande-schemas.spec.ts able to fail.
+          # Under UTC (and under a no-DST dev machine) calendar arithmetic and
+          # duration arithmetic agree, so the test passes against buggy code.
+          # Revime is France-only, so running its tests in the product's own
+          # timezone is also correct on its own merits.
+          TZ: Europe/Paris

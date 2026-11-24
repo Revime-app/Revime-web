@@ -1,0 +1,71 @@
+{
+  "cli": {
+    "version": ">= 21.7.1",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "ios": {
+        "credentialsSource": "local"
+      },
+      "android": {
+        "credentialsSource": "remote"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://api.revime.fr",
+        "EXPO_PUBLIC_GOOGLE_ENABLED": "1",
+        "SENTRY_DISABLE_AUTO_UPLOAD": "true",
+        "EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY": "pk_test_51TxsWYECtM3Jtp7k5iOwLPKQJZdirEPpuXc9OALUhaSUQc5jiWlZbI8jVk2J5GxGoqvYOpxucm2ZTNgqIovfvIWk00IQWWys8a"
+      }
+    },
+    "preview": {
+      "distribution": "internal",
+      "ios": {
+        "credentialsSource": "local"
+      },
+      "android": {
+        "credentialsSource": "remote",
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://api.revime.fr",
+        "EXPO_PUBLIC_GOOGLE_ENABLED": "1",
+        "SENTRY_DISABLE_AUTO_UPLOAD": "true",
+        "EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY": "pk_test_51TxsWYECtM3Jtp7k5iOwLPKQJZdirEPpuXc9OALUhaSUQc5jiWlZbI8jVk2J5GxGoqvYOpxucm2ZTNgqIovfvIWk00IQWWys8a"
+      }
+    },
+    "production": {
+      "autoIncrement": true,
+      "ios": {
+        "credentialsSource": "local"
+      },
+      "android": {
+        "credentialsSource": "remote"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://api.revime.fr",
+        "EXPO_PUBLIC_GOOGLE_ENABLED": "1",
+        "SENTRY_DISABLE_AUTO_UPLOAD": "true",
+        "EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY": "pk_test_51TxsWYECtM3Jtp7k5iOwLPKQJZdirEPpuXc9OALUhaSUQc5jiWlZbI8jVk2J5GxGoqvYOpxucm2ZTNgqIovfvIWk00IQWWys8a"
+      }
+    }
+  },
+  "submit": {
+    "production": {
+      "ios": {
+        "ascAppId": "6800161772",
+        "appleTeamId": "B53DSP22UV",
+        "bundleIdentifier": "fr.revime.demo",
+        "ascApiKeyPath": "./AuthKey_XK5UXT33P3.p8",
+        "ascApiKeyId": "XK5UXT33P3",
+        "ascApiKeyIssuerId": "81fb86db-48a3-47b7-b0da-f61fd68b6613"
+      },
+      "android": {
+        "track": "internal",
+        "releaseStatus": "draft"
+      }
+    }
+  }
+}

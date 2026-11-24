@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "820041835402",
+    "project_id": "revime-9f01a",
+    "storage_bucket": "revime-9f01a.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:820041835402:android:0ce1529645f7b99a53de73",
+        "android_client_info": {
+          "package_name": "fr.revime.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBxrWyxrBPZD103F7VxG-T_aepZateGAqA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

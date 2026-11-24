@@ -1,0 +1,784 @@
+# Render blueprint for the Revime API.
+#
+# Live service: srv-d9k1g6m417fc73dv6pjg (workspace ElaunchIT), created with the
+# Render CLI using settings matching this file. Keep the two in step: this file is
+# the reviewable record of the deploy.
+#
+# Windows gotcha, learned the hard way: creating this through the CLI under Git Bash
+# turned `--health-check-path /api/v1/health` into `C:/Program Files/Git/api/v1/health`
+# via MSYS path conversion. Prefix such commands with MSYS_NO_PATHCONV=1.
+#
+# Commands run from the repository root (not apps/api) so that npm workspaces
+# resolves and hoists dependencies once. `-w @revime/api` scopes the work to
+# the API without a separate install inside it.
+#
+# 🛑 DEPLOYING IS MIGRATING - but the command is NOT IN THIS FILE, and this comment
+# used to imply it was. Corrected 2026-08-30, because a reader grepping render.yaml
+# for `migrate deploy` finds only prose and can conclude the claim went stale. The
+# real chain is two hops:
+#
+#   render.yaml    startCommand: npm run start:prod -w @revime/api
+#   apps/api/package.json    "start:prod": "prisma migrate deploy && node dist/main"
+#
+# So a pending migration applies on every deploy, with no separate step and no way to
+# skip it. It runs at START rather than in buildCommand on purpose: migrations then
+# execute with the runtime environment, and Render's build cache can never skip them.
+# Verify a migration actually landed against the live database (`_prisma_migrations`),
+# never off a green deploy status.
+services:
+  - type: web
+    # The service NAME is revime-api but its URL is still
+    # repareme-api.onrender.com: Render derives the hostname from the service
+    # slug, which is immutable after creation. Renaming does not move the URL.
+    # Custom domain api.revime.fr is active with automated TLS and CNAME (CF6-09). It is ADDITIVE:
+    # repareme-api.onrender.com keeps answering the same service. Builds made after the
+    # EXPO_PUBLIC_API_URL change in eas.json call api.revime.fr; every build installed before it
+    # (the client's #37 included) still calls the Render host, so Better Auth serves BOTH hosts
+    # (apps/api/src/auth/base-url.ts). The Boxtal subscriptions and the Stripe webhook below are
+    # registered at the Render host and are not moved.
+    name: revime-api
+    runtime: node
+    # Free for development. Free instances spin down when idle and cold-start for
+    # roughly a minute, so UPGRADE TO starter BEFORE ANY CLIENT DEMO - on a phone a
+    # cold start looks like a broken app, not a waking server. The proposal already
+    # disclosed ~16 EUR/month for the API, so the upgrade is within what was agreed.
+    plan: free
+    region: frankfurt # EU, alongside the Paris database
+    branch: main
+    autoDeploy: true
+    healthCheckPath: /api/v1/health
+    # Documentation-only pushes must not redeploy the API. PROJECT_ROADMAP.md is
+    # updated at the end of every session and each push was costing a full build,
+    # restart and cold start for a file the runtime never reads.
+    #
+    # ignoredPaths ONLY, deliberately, with no `paths` allow-list: an allow-list
+    # silently stops deploying anything you forgot to list - a new workspace, the
+    # root package-lock, this file - whereas an ignore-list fails safe, because
+    # anything not named here still deploys.
+    #
+    # Render skips the deploy only when EVERY changed path matches, so a commit
+    # touching both code and markdown still deploys. `docs/**` is broader than
+    # `**/*.md` on purpose, to cover a future diagram or PDF in there.
+    buildFilter:
+      ignoredPaths:
+        - "**/*.md"
+        - docs/**
+    buildCommand: npm ci --include=dev && npm run build -w @revime/shared && npm run build -w @revime/api
+    startCommand: npm run start:prod -w @revime/api
+    envVars:
+      - key: NODE_VERSION
+        value: "24"
+      # resend, not console: revime.fr is verified in Resend and the live service
+      # already runs on it. A committed `console` here means the next blueprint
+      # sync silently reverts mail to the log sender and re-breaks password reset,
+      # which spec §11.1 records as having been quietly broken in production for
+      # weeks. The key itself is dashboard-managed, below.
+      - key: MAIL_DRIVER
+        value: resend
+      # Ships FALSE, and this is deliberate rather than unfinished. autoDeploy is
+      # true on main, so the server half goes live on any push.
+      #
+      # CORRECTED 2026-09-04 (slice 3) - READ THIS BEFORE THE REASON BELOW, WHICH IS
+      # NO LONGER THE ONE THAT HOLDS. This rule said the installed build "has no
+      # verification screen" and to flip the flag "only alongside a build that carries
+      # the mobile half". MEASURED: apps/mobile/app/verification.tsx arrived in f73cd24
+      # (2026-08-16) which IS an ancestor of b69d9e8 = build 6, 2026-08-21, and the file
+      # is present in that tree (git cat-file -e b69d9e8:apps/mobile/app/verification.tsx).
+      # So the stated condition has been MET since build 6 and the rule read as satisfied.
+      #
+      # WHAT ACTUALLY HOLDS IT FALSE, and it is a different fact: on 2026-09-04 CF-D1
+      # made BASIC a verified e-mail OR a verified phone rather than both, and rewrote
+      # the refusal copy on three surfaces to say "ou". NONE of that is in any build.
+      # Flipping the flag now would enforce a rule whose explanation, on the phone in the
+      # client's hand, still tells him to confirm BOTH. Flip to "true" only alongside a
+      # build carrying the 2026-09-04 copy - the original reasoning, on a newer fact.
+      #
+      # The older reason is kept because the SHAPE is the lesson: a live gate answering 403
+      # to Publier and offer submit with no route in the app to satisfy it removes his core
+      # action rather than merely misrendering it.
+      #
+      # gate.ts compares against the literal "true", so any other value fails safe
+      # to off. verification-gate.int.spec.ts pins that, and the break check
+      # confirmed an enabled-unless-disabled reading turns the flag-off path into
+      # a 403.
+      - key: VERIFICATION_GATE_ENABLED
+        value: "false"
+      # Also ships FALSE, and it is the STRICTER of the two gates.
+      #
+      # CORRECTED 2026-09-04 (slice 3) - READ THIS BEFORE THE STRUCK TEXT: BOTH
+      # PRECONDITIONS THIS RULE NAMED ARE NOW MET, so it read as PERMISSION to flip.
+      # ~~Its blocker is not merely unshipped but impossible today: nothing in the
+      # codebase can grant IDENTITY. It needs two things first - a grant path
+      # (accept-and-pay P2, or Stage 3b piece 5) and the mobile identity screen that
+      # piece 3 deliberately did not build.~~
+      #   1. THE GRANT PATH EXISTS: promoteFromIdentityIfEligible in
+      #      apps/api/src/verification/promote-identity.ts takes BASIC -> IDENTITY off a
+      #      verified Stripe Identity session. Added by be3baa8 (2026-08-17), which is an
+      #      ancestor of build 6 and present in that tree. gate.ts already contradicted
+      #      this line in writing: of 21 réparateur-enabled profiles, ONE is at IDENTITY.
+      #   2. THE MOBILE SCREEN EXISTS: app/identite/retour.tsx, plus profil.tsx's gate
+      #      card and IdentityGateSheet.tsx. And on 2026-09-04 slice 3 removed the last
+      #      reason to call it unbuilt - its query was gated on repairerEnabled &&
+      #      connectEnabled, so the celebration screen was unreachable for the very user
+      #      the verify-then-become order produces. It is gated on connectEnabled alone now.
+      #
+      # WHAT ACTUALLY HOLDS IT FALSE, and none of it is a code gap:
+      #   (a) Stripe Identity is still TEST mode - CF-08 waits on the client's own check as
+      #       account representative. Read docs/stripe-identity-live-activation.md first.
+      #   (b) 20 of 21 réparateur-enabled profiles sit at NONE (measured, see gate.ts), so
+      #       flipping this today refuses réparateur mode AND every offer to almost all of
+      #       them, the client's own account included. That was always the real hazard and
+      #       it is unchanged.
+      #   (c) The two screens above are in build 7 (2026-09-15, addd1a41) and on NO DEVICE - the
+      #       build is not submitted and the client keeps build 6, so for this flag the state is
+      #       unchanged: a gate screen with nowhere to send the
+      #       user is worse than no screen - the original warning, still exactly right.
+      #
+      # Same literal-"true" comparison and the same fail-safe as its sibling above.
+      # verification-gate.int.spec.ts pins both, and the break check confirmed that
+      # a gate admitting BASIC, or one gating every mode switch rather than the
+      # false → true transition, is caught there.
+      - key: IDENTITY_GATE_ENABLED
+        value: "false"
+      # V7 A11 (U2b, Q8). When "true", deleting the account (DELETE /users/me) and changing an IBAN
+      # already on file (POST /connect/onboarding) need the password, or an e-mailed code, from the
+      # last 10 minutes; an app build answers STEP_UP_REQUIRED with its « Confirmez votre identité »
+      # sheet. 🛑 KEEP "false" UNTIL THE END-OF-ROUND BUILD REACHES THE CLIENT: today's builds have no
+      # sheet, so they would only show an error on both actions. Flip it on the owner's word at that
+      # delivery. The dashboard's e-mail change asks for the password regardless of this switch.
+      - key: STEP_UP_ENFORCED
+        value: "false"
+      # V7 D5 (U9, DEC7-24). When "true" and the dashboard's maintenance mode is on, the API answers
+      # every request from anyone but the six staff roles with 503 MAINTENANCE and the dashboard's
+      # message (webhooks, crons, /health and the status read excepted). 🛑 KEEP "false" UNTIL THE
+      # END-OF-ROUND BUILD REACHES USERS: today's builds have no maintenance screen, so they would
+      # only show the message as an error on every screen. Flip it on the owner's word at that
+      # delivery, together with STEP_UP_ENFORCED. The app's own screen does not wait for it.
+      - key: PLATFORM_GATES_ENFORCED
+        value: "false"
+      # V9 B1 (B1 (4), DEC9-04 (5)). When "true", a signed-in account with no recorded CGU acceptance
+      # gets 403 CGU_ACCEPTANCE_REQUIRED on every app route but the completion and deletion ones; the
+      # new build shows its « Dernière étape » screen. 🛑 KEEP IT ABSENT / "false" UNTIL THE BUILD
+      # WITH THAT SCREEN REACHES USERS, then add it on Render on the owner's word (a merge write; this
+      # file is not applied to the live service). Independent of PLATFORM_GATES_ENFORCED.
+      - key: CGU_ACCEPTANCE_ENFORCED
+        value: "false"
+      # V9 U3 (B2 (1), DEC9-09 (3), (7)). When "true", an account linked to Apple or Google confirms
+      # sensitive actions with its provider (the e-mailed code is refused) and deleting it needs that
+      # confirmation (an Apple-only link with a password may use the password). 🛑 KEEP "false" UNTIL THE
+      # V9 BUILD IS DELIVERED: builds 44 and APK a754d6d0 only know the password and the code. Flipped
+      # with CGU_ACCEPTANCE_ENFORCED, on the owner's word.
+      - key: STEP_UP_PROVIDER_ENFORCED
+        value: "false"
+      # V9 U3 (B2 (5)). APPLE_TEAM_ID (B53DSP22UV, not a secret), APPLE_KEY_ID and APPLE_PRIVATE_KEY (the
+      # client's Sign in with Apple .p8, one line with \n escapes, a SECRET) revoke an Apple sign-in at
+      # account deletion. Deliberately NOT declared here (a declared key resyncs the blueprint); set on
+      # Render with a merge write, on the owner's word, before the V9 build is delivered. Absent = the
+      # Apple revocation is skipped and logged.
+      # Twilio production SMS. Since 2026-09-16 these credentials point to the
+      # client's Full US1 account and approved Business Profile. Revime's compiled
+      # driver delivered and checked a real +33 code under the « Revime » sender
+      # before this switch. Historical notes follow.
+      #   - it said "console until the Twilio launch prerequisites are done:
+      #     upgrade off trial, an approved compliance profile, and a French mobile
+      #     as a verified recipient". TWO of those three were never real. Twilio's
+      #     own docs: Verify needs no compliance profile or sender registration
+      #     (error-30018 tells OTP senders to use Verify precisely because it
+      #     "will automatically take care of all applicable registrations"), and a
+      #     trial blocks LAUNCH, not building -- it allows 5 verified recipients.
+      #   - the upgrade off trial is still genuinely required before REAL users,
+      #     because a trial refuses every UNverified recipient (error 21608).
+      # Still outstanding, and neither is in this repository: a +33 mobile as one
+      # of the 5 verified recipients, and the Verify rate-limit buckets that
+      # otp.service.ts passes keys for on every send. See PROJECT_ROADMAP.md.
+      # The factory needs BOTH this and all four credentials, so a stray "twilio"
+      # here still cannot start spending money on its own -- which is why
+      # apps/api/.env keeps SMS_DRIVER=console with no credentials, and why the
+      # test suite therefore cannot bill a send.
+      - key: SMS_DRIVER
+        value: twilio
+      # Étape 3b piece 5, and READ THE INVERSION BEFORE CHANGING IT. Every other
+      # driver above fails safe to a fake, because there a fake sends nothing and
+      # spends nothing. For the company registry the FAKE is the dangerous
+      # direction: it would grant a real « Professionnel vérifié » badge on a
+      # company nobody verified. So absence selects the REAL government registry,
+      # and the fake is opt-in with the literal value "fake".
+      #
+      # DELIBERATELY NOT SET on the live service, which is why this entry documents
+      # rather than pins: the real registry is what production must use. It needs no
+      # credential, costs nothing and creates no vendor object, so there is nothing
+      # for an absent variable to fail safe about. The route it feeds is inert by
+      # DATA rather than by a flag - it refuses every account below IDENTITY, and no
+      # profile is above BASIC.
+      - key: REGISTRY_DRIVER
+        sync: false
+      # 🛑 ADDED 2026-08-21, and this file had NO storage entries at all before - the three
+      # variables were live on the service while nothing here mentioned them, which is exactly
+      # the drift this file exists to prevent. It documents the service, it does not manage it,
+      # so the two are kept in step by hand.
+      #
+      # Storage went live so the demo seed's twelve demande photos could render. `gateway.ts`
+      # requires ALL THREE and fails safe to a FAKE gateway otherwise, which is the ordinary
+      # convention here rather than the inverted one `REGISTRY_DRIVER` uses: the fake signs
+      # nothing and writes nothing, so absence is the safe direction.
+      #
+      # 🛑 The fake's failure mode is SILENCE, and it cost a debugging round on 2026-08-21.
+      # It returns `photoUrls: []` and `photoUrl: null`, so every photo-led card renders its
+      # empty state with nothing logged - indistinguishable from the photos not existing. The
+      # gateway now announces its choice once at construction and names the absent variables
+      # on fallback, precisely so that never costs anyone that time again.
+      #
+      # 🛑 Turning STORAGE_DRIVER on made `purgeOrphanPhotos` a LIVE cron job for the first
+      # time. It deletes bucket objects no DemandePhoto row references. Checked right after
+      # seeding: 12 objects, 12 rows, zero orphans either direction, so it has nothing to
+      # collect - but it is no longer the no-op that returned zeros without listing anything.
+      #
+      # The bucket is `demande-photos`, created via the Supabase MCP: private, 10 MB limit,
+      # image/jpeg and image/png only, RLS enabled with ZERO policies so only the service_role
+      # key reaches it. (Re-verified against the live bucket 2026-08-30: still the only bucket,
+      # still those exact limits.)
+      #
+      # 🛑 THE NAME IS NARROWER THAN THE CONTENTS, AND THIS COMMENT MISSED IT ONCE. It used to
+      # say « Paths are demandes/<userId>/<draftId>/<objectId>.<jpg|png> » full stop, which was
+      # already incomplete when CF-23 shipped avatars and stayed that way for a day. THREE
+      # prefixes now share this one bucket:
+      #
+      #   demandes/<userId>/<draftId>/<objectId>.<jpg|png>   demande photos, checkPhotoPaths
+      #   avatars/<userId>/<objectId>.<jpg|png>              CF-23, checkAvatarPath
+      #   banners/<userId>/<objectId>.<jpg|png>              CF-24, checkBannerPath
+      #
+      # All three go through the whole-string matcher in avatar-paths.ts, and note photoExtension
+      # maps image/jpeg to 'jpg', so '.jpeg' is a legal file extension and an illegal path one.
+      #
+      # 🛑 THE PREFIX IS THE ONLY THING SEPARATING THEM, which is why the cron note above matters:
+      # `purgeOrphanPhotos` is anchored at `demandes` and MUST stay there. Widening it deletes
+      # every profile photo and every banner 24h after upload, silently, because neither has a
+      # DemandePhoto row to look referenced.
+      - key: STORAGE_DRIVER
+        value: "supabase"
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      # ═══════════════════════════════════════════════════════════════════════════
+      # LIVRAISON BOXTAL (spec docs/superpowers/specs/2026-09-04-livraison-boxtal-design.md §12).
+      # ✅ FLIPPED TO `boxtal` ON THE LIVE SERVICE 2026-09-15 06:49:18 UTC, through the Render MCP on
+      # the owner's word (« flip it now »), BEFORE conditions (b), (e), (f) and (g) held - his decision,
+      # taken after the consequence was put to him: the client's installed build 6 never sends a quote
+      # id, so every PARCEL payment from it is refused « Devis de livraison requis. » until build 7
+      # reaches him (in-person repairs are unaffected). Deploy dep-dakekrgu01pc73esnhb0, live 06:52:30 UTC.
+      # The value below records the LIVE state. A fresh apply with `boxtal` and no keys is still inert:
+      # isShippingQuotesEnabled() needs the driver AND the five keys AND storage (shipping/config.ts).
+      # `manual` was the behaviour until then. The seven conditions the flip was meant to wait for,
+      # kept as the record of what was and was not true when it happened:
+      #   (a) the §14.3 sandbox cycle ran and its results are appended to the spec
+      #       (✅ 2026-09-04, spec « Amendment » - every item ESTABLISHED);
+      #   (b) the client's Boxtal account is on deferred payment by direct debit (✅ 2026-09-04,
+      #       message 12) AND its outstanding limit is raised above the 300 € default (his action,
+      #       ⏳ not confirmed);
+      #   (c) two production subscriptions exist (DOCUMENT_CREATED, TRACKING_CHANGED) pointing
+      #       at https://<this host>/api/v1/shipping/webhook with BOXTAL_WEBHOOK_SECRET, created
+      #       from the SAME API application whose keys are set below
+      #       (✅ 2026-09-07 on the owner's word: ids 969 DOCUMENT_CREATED and 970 TRACKING_CHANGED,
+      #       both at https://repareme-api.onrender.com/api/v1/shipping/webhook, secret = the one set
+      #       below the same minute; script boxtal-subscriptions.mjs beside the keys, never the repo);
+      #   (d) the private bucket `shipping-labels` exists on the Supabase project, PDF only
+      #       (✅ 2026-09-07: private, application/pdf only, 2 MB - created through the Storage REST
+      #       API with the service role, because the Supabase MCP's SQL runs read-only);
+      #   (e) one real pair of labels was bought on production and used or cancelled;
+      #   (f) the in-app privacy policy and the client's own name Boxtal as a recipient;
+      #   (g) A BUILD CARRYING THE MOBILE HALF HAS REACHED THE CLIENT - an older binary never
+      #       sends a quote id and would be refused « Devis de livraison requis. » on every
+      #       parcel payment the moment this reads boxtal. (g) binds the sequencing.
+      # Flip through the Render MCP on the owner's word, never by a dashboard click-path.
+      # ✅ SET on the live service 2026-09-07 through the Render MCP (a MERGE - `replace` stays false -
+      # so the other vars survived; the env-only restart dep-dafa69v40ujc73achvt0 was CANCELED and
+      # superseded by the render.yaml push's deploy dep-dafa7ceq1p3s73dnrvf0, live 11:48 UTC), never
+      # committed: BOXTAL_V1_ACCESS_KEY, BOXTAL_V1_SECRET_KEY, BOXTAL_V3_ACCESS_KEY,
+      # BOXTAL_V3_SECRET_KEY, BOXTAL_WEBHOOK_SECRET. Inert while SHIPPING_DRIVER reads manual:
+      # isShippingQuotesEnabled() needs the driver AND the keys. Still open before the flip:
+      # (b) the 300 € raise (client), (e) the first real pair (owner's word, through the flipped
+      # api), (f) the client's legal texts, and (g) the build reaching the client - (g) binds it.
+      # ✅ 2026-09-15: FLIPPED ANYWAY on the owner's word (head of this block). (b), (e), (f), (g) stay
+      # open as FACTS - and (e), the first real label pair, is still HIS explicit word: the first parcel
+      # payment from build 7 buys real labels on the client's Boxtal account. Never drive one unprompted.
+      # ═══════════════════════════════════════════════════════════════════════════
+      - key: SHIPPING_DRIVER
+        value: boxtal
+      - key: SHIPPING_LABEL_BUCKET
+        value: shipping-labels
+      # ═══════════════════════════════════════════════════════════════════════════
+      # CF-44 PUSH NOTIFICATIONS (spec docs/superpowers/specs/2026-09-07-cf-44-push-notifications-design.md §10.4).
+      # Absent selects `console`: every push is logged and nothing leaves the process. Set to
+      # `expo` only when BOTH hold:
+      #   (a) a build carrying expo-notifications has reached at least one device, so a token
+      #       exists to send to;
+      #   (b) the client's APNs .p8 key is uploaded to the EAS project (only the Account Holder
+      #       can create it - Apple, web UI only; uploaded 2026-09-16 via EAS credentials).
+      # Flipping before (b) is harmless - Expo accepts the sends and they come back as
+      # InvalidCredentials receipts, counted as `failed` by the pushReceipts cron job - so the
+      # ORDER of (a) and (b) is not load-bearing; both facts are. A production write, on the
+      # owner's word, through the Render MCP. The key itself never touches this service.
+      # DELIBERATELY NOT SET: this entry documents, it does not pin.
+      # ═══════════════════════════════════════════════════════════════════════════
+      - key: PUSH_DRIVER
+        sync: false
+      # Étape 5 piece 1. Ships FALSE and gates the two messaging writes that introduce
+      # text or open a channel (POST /conversations and POST /conversations/:id/messages).
+      # The read stamp (PATCH /conversations/:id/read) is deliberately open - it writes
+      # only the caller's own lastReadAt column - so a user whose messaging is switched
+      # off mid-conversation can still read what was said to him and the unread badge
+      # does not stick, while no new text can enter the system either way.
+      #
+      # Why it exists at all, when the badge route two entries up needed no flag:
+      # messaging is the FIRST place in this project where one account can send
+      # arbitrary text to another, and the client is actively using production - he
+      # published « Écran cassé » from his installed build on 2026-08-15. Unlike the
+      # registry route there is no data condition that makes this inert: any client
+      # and any réparateur who has offered on his demande could message the moment it
+      # is on.
+      #
+      # TWO conditions before it flips, and they are independent of every other flag
+      # here:
+      #   1. a build carrying the three mobile surfaces - the Messages inbox, the
+      #      conversation thread screen, and the « Contacter » button on the offer
+      #      card. Until then the app has no route to a conversation, so flipping
+      #      this turns on a subsystem nothing can reach.
+      #   2. Étape 5 piece 2, which gives an operator somewhere to act on a report.
+      #      Turning on a private channel between strangers with no moderation path
+      #      is the half of this stage that must not ship alone.
+      #
+      # Compared against the literal "true" in apps/api/src/conversations/flag.ts,
+      # which is the single reader, so any other value fails safe to off.
+      # messaging-flag.spec.ts pins the absent case by DELETING the variable rather
+      # than trusting the ambient value, and the break check confirmed an
+      # enabled-unless-disabled reading fails seven assertions.
+      #
+      # Surfaced to the app as MeResponse.messagingEnabled, so no screen has to
+      # guess: with it off the composer explains itself and « Contacter » does not
+      # render at all, rather than offering an action the server answers 422.
+      # 🛑 AMENDED 2026-08-21: this is now "true" in production, set through the Render API
+      # on the owner's explicit instruction. Read the two conditions above knowing that
+      # condition 2 was met on 2026-08-19 and **condition 1 was NOT - no build carries the
+      # messaging screens.** So the state is exactly what that condition warned about: the
+      # subsystem is on and reachable only from a binary that has the screens, which the
+      # client's installed build 4 (2026-08-15) does not - they landed 2026-08-19, four days
+      # later. The three eas.json profiles pointed at repareme-api.onrender.com when this was
+      # written (they point at api.revime.fr since CF6-09, the same service), so any NEW
+      # build talks to this flag and messaging works there immediately.
+      # ✅ Recorded 2026-09-15: builds 5 and 6 (2026-08-21) carry the messaging screens and build 6
+      # is the client's installed binary, so condition 1 has been met since 2026-08-21.
+      #
+      # Verified after the flip rather than assumed: MeResponse.messagingEnabled true, the
+      # inbox returning the seeded conversation, and GET /conversations/:id returning all five
+      # messages - with a bogus-uuid control answering 404 beside it, because a router 404 and
+      # a service 404 are byte-identical in this API.
+      #
+      # Piece 2's report-and-block path is the mitigation that makes the override tolerable,
+      # and it is the reason condition 2 named piece 2 at all.
+      - key: MESSAGING_ENABLED
+        value: "true"
+      # NOTE, for anyone scanning this file for a REVIEWS flag: there deliberately
+      # isn't one, and the absence is a decision rather than an oversight. Étape 5
+      # piece 3 shipped reviews on 2026-08-19 with no flag anywhere in the path,
+      # because a review requires a commande at PAID + RELEASED and no commande can
+      # reach that while PAYMENTS_ENABLED is absent. So reviews are inert BY DATA,
+      # exactly as BUSINESS is, and a flag in front of something already unreachable
+      # buys nothing while costing a false sense of protection. See the design's §6.4.
+      #
+      # 🛑 THAT ARGUMENT EXPIRED ON 2026-08-21 AND THE CONCLUSION DID NOT.
+      # PAYMENTS_ENABLED is now true on the live service, so reviews are NO LONGER
+      # inert by data: 34 commandes and 34 reviews exist and a client can write a new
+      # one. The decision to ship reviews unflagged still stands, but it now rests on
+      # the route's own guards rather than on unreachability, and those guards are the
+      # thing pinned by tests: non-RELEASED refused, REFUNDED refused separately,
+      # DISPUTED refused separately again. **If a reviews flag is ever wanted, this is
+      # the note that says why there is not one, and it is no longer self-evident.**
+      # Because "inert by data" is a claim rather than a configuration, it is pinned by
+      # tests: a non-RELEASED commande is refused, a REFUNDED one separately, and a
+      # DISPUTED one separately again.
+      # Recorded here because this file documents why every OTHER flag exists, so a
+      # reader finding no review flag would reasonably assume it was forgotten.
+      # NOTE, for anyone scanning this file for a WARRANTY flag after reading CF-31:
+      # there deliberately isn't one, and unlike the reviews note above this reasoning
+      # will NOT expire, because it is not an unreachability argument.
+      # CF-31 (2026-08-25) reserved Offer.warrantyLabel for verificationLevel BUSINESS
+      # -- « La garantie doit être réservée aux professionnels », the client's own words.
+      # That is a PERMANENT PRODUCT RULE, not a rollout step, so it has no flag and must
+      # not be given one: a flag in front of it would mean a configuration change could
+      # hand a garantie professionnelle back to a réparateur particulier, which is the
+      # single thing the item forbids. It is enforced in offers.service.ts
+      # (assertWarrantyAllowed) and NOT in verification/gate.ts, whose every export IS
+      # flag-switched -- filing it beside those two asserts is what would invite the flag.
+      #
+      # 🛑 One consequence to state plainly, because it looks like a defect from the
+      # outside and is the rule working: NOBODY on this service can currently offer a
+      # garantie. BUSINESS is inert by data exactly as the note above says -- 0 accounts
+      # hold it, BusinessVerification is empty, and business.service.ts refuses the SIRET
+      # check below IDENTITY, which only 1 account has. Reaching it therefore waits on
+      # CF-08's Stripe Identity application, in Blockers. Do NOT "fix" this by widening
+      # the rule to IDENTITY: that level is a particulier who verified his ID, and the
+      # client requires the two badges to rank equal.
+      # NOTE, for anyone scanning this file for a DIRECTORY flag: there deliberately
+      # isn't one either, and the reasoning is NOT the same as the reviews note above.
+      # Stage 4b piece C shipped the réparateur directory and public profile on
+      # 2026-08-19 with no flag: GET /repairers, GET /repairers/:userId and
+      # PATCH /users/me/repairer-profile are all unflagged, matching
+      # GET /repairers/:userId/reviews which piece 3 shipped the same way.
+      # The difference that matters: reviews are inert BY DATA, because no commande
+      # can reach PAID + RELEASED while PAYMENTS_ENABLED is absent. (🛑 No longer true
+      # as of 2026-08-21, see the amendment on the reviews note above. The contrast this
+      # sentence draws has collapsed: NEITHER is inert by data now.) The directory is
+      # NOT inert by data -- all three production accounts are réparateur-enabled with
+      # postal codes, so these routes return real rows the moment they deploy. They
+      # were judged safe to expose unflagged because they are READS of data those
+      # accounts already hold, plus one write a réparateur can only aim at himself,
+      # and because nothing can CALL them until an EAS build carries the mobile
+      # screens -- so the reachability gate is the build, not a variable in this file.
+      # A flag here would have been a fifth thing to remember to turn on, guarding a
+      # surface with no way in. See that design's §6.4.
+      # If a future slice adds a réparateur surface that WRITES something another
+      # user can see, revisit this: the argument above rests on reads plus a
+      # self-only write, not on directories being harmless.
+      # Accept-and-pay P1. Ships FALSE and must stay that way until the pre-flip
+      # checklist in PROJECT_ROADMAP.md is done. READ THAT LIST RATHER THAN THIS
+      # COMMENT: it was three items when this block was written and P4 and P5 have
+      # since added six between them, so a count here goes stale on every slice.
+      # Its shape today: the LIVE webhook endpoint created with all SIX event names
+      # at once (checkout.session.completed, checkout.session.expired,
+      # payment_intent.succeeded, payment_intent.canceled, charge.dispute.created,
+      # refund.updated; the PaymentIntent pair were added to the test endpoint on
+      # 2026-10-10 by CF6-04, since the mobile PaymentSheet pays by PaymentIntent and
+      # sends no checkout.session event)
+      # (live mode holds ZERO endpoints, so it is a CREATE, not a widen, and
+      # the signing secret is returned only at that moment), the statement descriptor
+      # changed off RÉPAREME, OPS_EMAIL set, one real pair of Colissimo labels bought
+      # to confirm the 1900 fee (🆕 2026-09-04: under the Boxtal driver this is condition (e) of the
+      # LIVRAISON BOXTAL block above and is performed THROUGH the integration), one real end-to-end
+      # test charge, and the first live
+      # release confirmed while the source charge is still inside the payout delay.
+      # Flipping this with no live endpoint means a real card is charged, no
+      # completed event ever arrives, Stripe stops retrying after three days, and the
+      # commande sits PENDING_PAYMENT forever with no refund path until P5.
+      #
+      # ✅ 2026-09-04 (slice 21): SETTLED, BUILT and MERGED into main (889ed09), not yet pushed. The fee is now
+      # 2,90 EUR + 4,5 % of the repair (protectionCentsFor in packages/shared), so the paragraph
+      # below no longer gates this flag; it is kept as the record of why the flat line went.
+      # Comment only -- no env var changes, nothing here alters the service.
+      # AND ONE THING THAT IS NOT A CHECKLIST ITEM: the fee model is an open
+      # COMMERCIAL decision and it gates this flag independently of everything above.
+      # The flat 640-cent protection line goes negative around a 183 EUR repair on a
+      # non-EEA card, so turning payments on before it is settled means either a
+      # refused transfer with the réparateur never paid, or losing money per
+      # transaction. It is also not ours to close unilaterally: 6,40 EUR is the
+      # client's own figure from feedback round 4 and the approved prototype renders
+      # it as a constant. See docs/superpowers/specs/2026-08-19-modele-de-frais-decision.md.
+      #
+      # This block was entirely ABSENT from this file until 2026-08-17, which is why
+      # P2 added it rather than leaving a second gap beside its own.
+      #
+      # ═══════════════════════════════════════════════════════════════════════════
+      # 🛑 LIVE SERVICE DIVERGES FROM THIS FILE AS OF 2026-08-21, DELIBERATELY.
+      #
+      # For the client's final V1 demo the owner asked for everything switched on.
+      # The live service now has PAYMENTS_ENABLED=true and CONNECT_ENABLED=true,
+      # with STRIPE_DRIVER=stripe and a **sk_test_** key. Verified against Stripe
+      # itself, not assumed: /v1/balance answers 200 with livemode:false on
+      # acct_1TxsWYECtM3Jtp7k. **No real money can move.**
+      #
+      # These values are left at their safe defaults here on purpose. This file is a
+      # blueprint that does NOT manage the service, and a fresh apply must never
+      # bring up an environment with payments on.
+      #
+      # ✅ 2026-09-04 (slice 21, merged 889ed09): the fee IS agreed and built -- 2,90 EUR + 4,5 % of
+      # the repair -- so « the fee agreed » in the live-mode list below is satisfied. The other three
+      # live-mode items (live webhook endpoint, statement descriptor, one real charge) still stand.
+      # The paragraph below is kept as the record of why test mode was chosen.
+      # THE COMMERCIAL BLOCKER BELOW IS NOT CLOSED BY THIS. The fee model is still
+      # the client's decision, and that is exactly why the demo runs in TEST mode:
+      # test mode demonstrates the flow without charging anyone, so it does not
+      # pre-empt a decision that is his. **Live mode still requires the fee agreed,
+      # a live platform webhook endpoint (live mode holds ZERO), the statement
+      # descriptor changed off RÉPAREME, and one real charge end to end.**
+      #
+      # 🛑 THE LIVE SWITCH IS NOT ONE VARIABLE (PRE-4, reviewed 2026-10-19). The API refuses payments
+      # on a key-mode conflict, but it cannot see the rest. In this order, with the owner's word:
+      #   1. a live platform webhook endpoint exists, and STRIPE_WEBHOOK_SECRET is ITS secret (and
+      #      the Connect and Identity ones, when CONNECT_ENABLED is turned on): a test secret
+      #      beside live events fails every signature, so a real card is charged and no order
+      #      ever completes. Nothing in the API can detect this.
+      #   2. STRIPE_PUBLISHABLE_KEY set to the pk_live_ key, together with STRIPE_SECRET_KEY and,
+      #      for the first days, STRIPE_LIVE_TEST_ONLY=true. Render restarts the service on an env
+      #      change: no code change and no EAS build, but not « instant ».
+      #   3. The data written in test mode does not carry over: a stored PaymentIntent, transfer or
+      #      ConnectAccount id comes from the test account or the fake driver, and none exists on the
+      #      live account (measured 2026-10-19: 48 commandes with a PaymentIntent id, 36 with a
+      #      transfer id, 6 Connect accounts). A refund or payout on one of them fails there, and
+      #      each réparateur must onboard again.
+      #   4. One real charge end to end, then the cap off.
+      #
+      # Test-mode webhook endpoints on acct_1TxsWYECtM3Jtp7k, all created with the
+      # exact event names their handlers switch on:
+      #   we_1U6ugiECtM3Jtp7knQkpGjtX  platform  6 events (4 at RECREATED 2026-08-21, then
+      #                                 + payment_intent.succeeded / .canceled on 2026-10-10, CF6-04;
+      #                                 its Stripe-side description still says "Same 4 events")
+      #   we_1U6ih2ECtM3Jtp7kv84YzDgj  connect   account.updated, connect:true
+      #   we_1U6ihBECtM3Jtp7kWMWbNDT9  identity  4 identity.verification_session.*
+      # A signing secret is returned ONLY at creation, which is why the two new ones
+      # had to be created rather than read: the previous values on this service were
+      # placeholders reading `whsec_local_…`.
+      #
+      # THE PLATFORM ENDPOINT WAS RECREATED 2026-08-21, and this is the line to read
+      # before touching any of the three. It used to say `we_1U5CzkECtM3Jtp7kWF1KjPyQ,
+      # pre-existing` -- and "pre-existing" was the defect. It was the only one of the
+      # three whose secret was NOT captured at creation: STRIPE_WEBHOOK_SECRET here
+      # held the apps/api/.env value instead, so every Stripe delivery failed
+      # constructEvent and 400'd. Proven from Render's app logs, six
+      # "[payments] webhook signature verification failed" lines on 2026-08-21, the
+      # first 0.5s after a real charge. Paid commandes then advanced ONLY when
+      # reconcile.yml's settleOrphanSessions reached them -- measured 1h59m and 5h41m
+      # late, and the schedule itself runs ~50min behind its 23 */6 * * * slots, so the
+      # real worst case was ~7 hours. The old endpoint is deleted.
+      #
+      # TWO RULES THIS BOUGHT, both of which apply to the LIVE endpoint that does not
+      # exist yet. (1) Subscribing an endpoint correctly and being able to VERIFY its
+      # deliveries are DIFFERENT CLAIMS -- an `enabled_events` update does not roll a
+      # secret, so a correctly-subscribed endpoint can 400 every event forever. Only a
+      # signed request against the deployed service tests the second claim, and it needs
+      # a wrong-secret control beside it or a 200 proves nothing. (2) Setting this key
+      # through Render's API does NOT re-inject it, AND NEITHER DOES A RESTART -- only
+      # POST /v1/services/{id}/deploys does. The value read back correctly from the API
+      # while the container still served the old one.
+      #
+      # WHAT WAS DELIBERATELY LEFT OFF, and it is the important half: the two GATES,
+      # VERIFICATION_GATE_ENABLED and IDENTITY_GATE_ENABLED. They are not features,
+      # they are RESTRICTIONS, so they add nothing to a demo and would have broken
+      # it. (That was written when no Twilio credentials existed here, so SMS_DRIVER
+      # fell back to console and a phone code was printed to this log instead of
+      # sent. NO LONGER TRUE since 2026-08-25 -- a code is really sent now, to the 5
+      # trial verified recipients only. The gates argument is unaffected.) The
+      # client's own account
+      # has phone NULL. Turning the verification gate on would have locked him out of
+      # publishing and offering with no way through, and the identity gate refuses
+      # réparateur mode and every offer until an account completes a document check.
+      #
+      # AMENDED 2026-09-04 (slice 3): the CONCLUSION stands, the REASON no longer does.
+      # Since CF-D1, BASIC is e-mail OR phone, so a NULL phone no longer decides his
+      # eligibility. He is still at NONE for a different reason: promoteToBasicIfEligible
+      # runs only on a fresh verification event (auth.ts's afterEmailVerification hook and
+      # verification.service.ts's check), and there is no backfill, so an already-verified
+      # e-mail does not retro-promote anybody. Recorded because gate.ts's own note says a
+      # premise nobody re-checks is how a stale comment becomes a stale decision.
+      # ═══════════════════════════════════════════════════════════════════════════
+      - key: PAYMENTS_ENABLED
+        value: "false"
+      # fake, not stripe. The gateway factories need BOTH this and a secret key, so a
+      # stray value here cannot start charging cards or creating connected accounts on
+      # its own. Every test in the suite runs against the fake and reaches no network.
+      - key: STRIPE_DRIVER
+        value: fake
+      # Accept-and-pay P2. Ships FALSE. It gates the WHOLE réparateur-onboarding
+      # subsystem - Stripe Identity as well as Connect payouts - despite its narrower
+      # name. The two are one journey and must move together: a réparateur who
+      # verifies his ID document and then cannot configure payouts has handed over an
+      # identity document and still cannot be paid.
+      #
+      # Its own flag rather than a fold into PAYMENTS_ENABLED because the two wait on
+      # different things: that one on the checkout webhook and the statement
+      # descriptor, this one on TWO new webhook endpoints that exist in NEITHER mode.
+      #
+      # Do not flip until ALL FOUR are true:
+      #   (a) both webhook endpoints exist and both secrets are set below,
+      #   (b) Stripe Identity is activated in LIVE mode - one Dashboard application,
+      #       and the roadmap's row closing this as unnecessary is now WRONG,
+      #   (c) a GDPR justification or non-biometric alternative exists for the selfie
+      #       check, which our own code requests with require_matching_selfie,
+      #   (d) a build carries the two Profil cards - otherwise a réparateur is told to
+      #       verify his identity by a screen he does not have.
+      - key: CONNECT_ENABLED
+        value: "false"
+      # Set in the Render dashboard / API, never committed:
+      #   STRIPE_SECRET_KEY               the mode-appropriate secret or restricted key
+      #   STRIPE_WEBHOOK_SECRET           P1's PLATFORM endpoint signing secret
+      #   STRIPE_CONNECT_WEBHOOK_SECRET   P2's CONNECT endpoint signing secret
+      #   STRIPE_IDENTITY_WEBHOOK_SECRET  P2's IDENTITY endpoint signing secret
+      #   PUBLIC_API_URL                  this service's own public URL, used for the
+      #                                   Stripe return and refresh URLs
+      #
+      # THREE DIFFERENT secrets for three different endpoints, each returned only at
+      # creation. Identity has its own endpoint rather than sharing P1's deliberately:
+      # P1's route carries real card charges, and verification-level logic does not
+      # belong on the money path.
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      # The key the APP pays with: every checkout response echoes it and the app re-initialises
+      # Stripe from it. Unset, the app uses the pk_test_ baked into every EAS build, which is right
+      # in test mode and WRONG in live mode. So `arePaymentsEnabled()` refuses a live secret key
+      # unless this is a pk_live_ key, and refuses a test secret key beside a pk_live_ key
+      # (`stripeKeyModesConflict`, PRE-4). It was undocumented here until 2026-10-19.
+      - key: STRIPE_PUBLISHABLE_KEY
+        sync: false
+      # The safety cap for the first live days: with "true" AND a live secret key, every payment of
+      # 1,00 EUR or more is refused (CF3-17, `assertPaymentAmountAllowed`). Only "true" turns it on.
+      # Off here because a blueprint must not cap a real service; set it to "true" together with
+      # the live keys, run the one real charge, then remove it.
+      - key: STRIPE_LIVE_TEST_ONLY
+        value: "false"
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: STRIPE_CONNECT_WEBHOOK_SECRET
+        sync: false
+      - key: STRIPE_IDENTITY_WEBHOOK_SECRET
+        sync: false
+      - key: PUBLIC_API_URL
+        sync: false
+      # Set in the Render dashboard / API, never committed:
+      #   DATABASE_URL         pooled, transaction mode, port 6543, ?pgbouncer=true
+      #   DIRECT_URL           pooler session mode, port 5432 (NOT db.<ref>.supabase.co - IPv6 only)
+      #   BETTER_AUTH_SECRET
+      #   BETTER_AUTH_URL      this service's own public URL
+      #   ADMIN_ORIGIN         the dashboard's URL(s), comma-separated; all are trusted for sign-in and
+      #                        CORS, the FIRST is written into e-mail links (V7 U10, auth/admin-origins.ts).
+      #                        Target: https://admin.revime.fr,https://repareme-admin.vercel.app
+      #   RESEND_API_KEY       the Resend key for the verified revime.fr sender
+      - key: DATABASE_URL
+        sync: false
+      - key: DIRECT_URL
+        sync: false
+      - key: BETTER_AUTH_SECRET
+        sync: false
+      - key: BETTER_AUTH_URL
+        sync: false
+      - key: ADMIN_ORIGIN
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      # Twilio Verify, never committed. The four values on the live service point
+      # to the client's Full US1 account since env deploy dep-dal792dbedkc73bh39bg
+      # (2026-09-16); service VA79b3332b45c97f248f7baa4d55e4aee6, Revime / 6 digits.
+      # Rotate the API-key secret if exposed.
+      #
+      # US1 keys, NOT IE1 -- and this was PROVEN the hard way on 2026-08-25 when an
+      # IE1 key was created and tried first. Two independent reasons it can never
+      # work, both from Twilio's own docs:
+      #   1. "Only the SNA channel of Verify is available in IE1. API requests to
+      #      the Start New Verification endpoint using a channel other than `sna`
+      #      fail." otp.service.ts sends channel: 'sms'.
+      #   2. "Any given Auth token or API key is only valid for the Twilio Region
+      #      in which it was created... Attempting to use credentials for another
+      #      Region will result in an authentication failure." otp.service.ts sets
+      #      no region/edge, so it talks to US1 regardless.
+      # The IE1 key was deleted rather than left dormant.
+      #   TWILIO_ACCOUNT_SID
+      #   TWILIO_API_KEY_SID / TWILIO_API_KEY_SECRET   the US1 API key pair
+      #   TWILIO_VERIFY_SERVICE_SID                    client production service, Revime / 6 digits
+      - key: TWILIO_ACCOUNT_SID
+        sync: false
+      - key: TWILIO_API_KEY_SID
+        sync: false
+      - key: TWILIO_API_KEY_SECRET
+        sync: false
+      - key: TWILIO_VERIFY_SERVICE_SID
+        sync: false
+      # Accept-and-pay P4. The operator's email, for the one notification P4 adds:
+      # there is no carrier API and no file storage, so the operator buys the two
+      # prepaid labels by hand. When absent the notification logs loudly rather than
+      # sending, which is development's deliberate state. It is on the PAYMENTS_ENABLED
+      # pre-flip checklist because firing a label notification to nobody is one way a
+      # parcel commande gets stuck.
+      #   OPS_EMAIL   the Revime operator's monitored mailbox
+      - key: OPS_EMAIL
+        sync: false
+      # ---------------------------------------------------------------------
+      # GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET / APPLE_CLIENT_ID
+      #
+      # 🛑 ALL THREE ARE NOW SET ON THE LIVE SERVICE, 2026-08-21, on the owner's
+      # instruction. Live env count went 13 -> 16. Still deliberately NOT declared
+      # here: two of them are secrets, and declaring a key resyncs the blueprint
+      # while render.yaml is NOT in the build filter's ignored paths, so touching
+      # it rebuilds the API. This block therefore documents them rather than
+      # managing them -- which is exactly why it has to be corrected by hand.
+      #
+      # Verified live rather than assumed, with a control, because the check is
+      # cheap and the failure mode is silent:
+      #   POST /api/auth/sign-in/social {"provider":"google"}   -> 200 + a real
+      #     accounts.google.com URL
+      #   POST /api/auth/sign-in/social {"provider":"apple", bogus idToken}
+      #     -> 401 INVALID_TOKEN  (registered, and rejecting the token: correct)
+      #   POST /api/auth/sign-in/social {"provider":"facebook"} -> 404
+      #     PROVIDER_NOT_FOUND   (the control that makes the two above meaningful)
+      #
+      # 🛑 AND THE TRAP THAT COST A ROUND: setting env vars through the Render API
+      # (PUT /v1/services/{id}/env-vars/{key}) does NOT restart the service. All
+      # three read back correctly from the API while the running container still
+      # served the old environment, so every provider answered 404 and
+      # /api/v1/health answered 200 the whole time. A POST to /v1/services/{id}/deploys
+      # was required. **A 200 from health is not evidence that an env change is live.**
+      #
+      # ~~DELIBERATELY ABSENT from this blueprint, 2026-08-20.~~ Superseded above;
+      # kept because the reasoning for documenting-not-declaring still applies.
+      #
+      # They are CREDENTIALS, not feature flags, and the fail-safe is closed:
+      # buildSocialProviders (apps/api/src/auth/social-providers.ts) registers a
+      # provider only when its credential is present AND non-blank, so absence
+      # means the route answers 404 PROVIDER_NOT_FOUND, which authErrorMessageFr
+      # renders as « Ce mode de connexion n'est pas disponible. »
+      #
+      # Google needs BOTH id and secret -- an id alone registers nothing, on
+      # purpose, so a half-configured environment fails at config time instead of
+      # at the token exchange. Apple needs ONLY the bundle identifier
+      # (fr.revime.demo): the ID-token path verifies against Apple's public JWKS,
+      # so there is no client secret, .p8 key, Team ID or Services ID. Omitting
+      # the secret also makes Apple's redirect flow throw by construction, which
+      # is what leaves exactly one Apple path to reason about.
+      #
+      # ~~Setting these is the OWNER's decision~~ -- he made it on 2026-08-21 and
+      # they are set. EXPO_PUBLIC_GOOGLE_ENABLED is now "1" in all three eas.json
+      # profiles too, so the buttons render from build 6 onward. It is still baked
+      # in at bundle time, so builds 1-5 render neither button whatever this
+      # service knows.
+      #
+      # The mobile gate also stopped being one flag for both providers on the same
+      # day: SocialAuthButtons now gates Google on this flag and Apple on its own
+      # native-module + OS probe, with one deliberate link kept -- on iOS, Google
+      # never renders without Apple beside it, which is guideline 4.8.
+      #
+      # Google's redirect URIs must be registered for BOTH hosts the API answers on:
+      # https://api.revime.fr/api/auth/callback/google (builds after CF6-09) and
+      # https://repareme-api.onrender.com/api/auth/callback/google (every build installed
+      # before it; removing it breaks their Google sign-in) -- Google
+      # forbids raw-IP redirect URIs, which is why the local API cannot be used.
+      # ---------------------------------------------------------------------
+      # Accept-and-pay P5. The shared secret for POST /internal/cron/run, which
+      # the reconcile.yml GitHub Actions schedule presents in x-cron-secret.
+      #
+      # A CREDENTIAL, not a feature flag. Absent means the route REFUSES, so the
+      # fail-safe is closed rather than open. The same value goes in the repo's
+      # Actions secrets.
+      #
+      # This comment read "the four-flag paragraph in PROJECT_ROADMAP.md stays four"
+      # until 2026-08-19. The point it was making still holds -- this is a credential
+      # and it does not join the flag count -- but the count itself is now FIVE, since
+      # Étape 5 piece 1 added MESSAGING_ENABLED. Stated as the reason rather than the
+      # number, because the number is what went stale.
+      - key: CRON_SECRET
+        sync: false
+      # Demande photos, 2026-08-20. Set in the Render dashboard. The bucket demande-photos must
+      # exist first. The service role key is a human action from the Supabase
+      # dashboard because the MCP exposes publishable keys only. Absence selects the
+      # FAKE gateway, matching STRIPE_DRIVER and SMS_DRIVER.
+      #   STORAGE_DRIVER              "supabase" to select the real gateway
+      #   SUPABASE_URL                project URL (e.g. https://<ref>.supabase.co)
+      #   SUPABASE_SERVICE_ROLE_KEY   service_role key for bucket access
+      # SET STORAGE_DRIVER LAST, after both credentials: it is the switch, and until it
+      # says "supabase" the gateway writes nothing. The one place "fake" is NOT
+      # self-announcing is the orphan-purge cron, which reports a clean 0/0/0 against an
+      # empty fake bucket four times a day. Full pre-flip checklist in PROJECT_ROADMAP.md
+      # under the 2026-08-20 demande photos entry -- kept there, not duplicated here,
+      # because the CRON_SECRET comment above is what a duplicated count looks like later.
+      - key: STORAGE_DRIVER
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false

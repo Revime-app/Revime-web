@@ -1,0 +1,59 @@
+node_modules/
+dist/
+.env
+.env.local
+.expo/
+.next/
+*.tsbuildinfo
+metro.log
+**/src/generated/
+.vercel/
+
+.vercel
+.env*
+!.env.example
+
+# Transient local tool state
+.superpowers/brainstorm/
+
+# SDD plan workspaces. Added 2026-08-20. Deliberately gitignored so a completed
+# plan's workspace is deleted. NOTE: one file from a previous run is already tracked
+# (.superpowers/sdd/2026-08-13-etape-4a-part2-offres-comparaison/final-fix-report.md)
+# because this rule was added after that run committed its scratch.
+.superpowers/sdd/
+
+# Local dev server logs (API, stripe listen, Metro). Added 2026-08-20.
+.devlogs/
+
+# Controller scratch for SDD runs.
+.sdd-*
+
+# Git worktrees created by the harness. Added 2026-08-25, before the first one was
+# created — a worktree is a FULL checkout of this repo, so leaving this unignored makes
+# `git status` in the main checkout report thousands of untracked files and invites
+# committing one tree into another. Note the harness places worktrees here rather than in
+# the `.worktrees/` the using-git-worktrees skill defaults to.
+.claude/worktrees/
+
+# Demo seed backup files. Added 2026-08-21. Hard deletes are one-way, so the
+# backup captures production rows before destruction.
+demo-backup-*.json
+
+# Subagent-driven-development scratch. Added 2026-09-01 (slice 17). The skill
+# treats this as git-ignored scratch — ledger, task briefs, implementer reports
+# and review packages for one plan. It was NOT ignored, so a `git add -A` would
+# have committed the whole apparatus. Same class as `.claude/worktrees/` above.
+.superpowers/
+
+# CF2-28 cleanup backups (production rows, never commit)
+apps/api/ad-sim-cleanup-backup-*.json
+
+# Agent & MCP local tool configs
+.agents/
+.mcp.json
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+

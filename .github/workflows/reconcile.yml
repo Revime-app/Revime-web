@@ -1,0 +1,112 @@
+# P5's reconciliation jobs. Every six hours.
+#
+# A GitHub Actions schedule rather than anything in-process, and both
+# alternatives are closed rather than merely worse: @nestjs/schedule cannot fire
+# because the API is on Render's FREE plan, which spins down when idle, and it
+# would double-fire if the service were ever scaled past one instance. Render
+# Cron Jobs are a separate PAID service type while the workspace sits
+# deliberately at $0.
+#
+# keepalive.yml is the precedent, and it carries the caveat to remember: GitHub
+# DISABLES scheduled workflows after 60 days of repository inactivity, emailing
+# the owner first. If this repo goes quiet, re-enable from the Actions tab.
+name: reconcile
+
+on:
+  schedule:
+    - cron: '23 */6 * * *'
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  reconcile:
+    runs-on: ubuntu-latest
+    # Derived, not chosen: three attempts at 420s plus two 30s sleeps is 21
+    # minutes worst case. At the old 10 it would cancel the job mid-attempt and
+    # report a timeout instead of the curl status the branches below read.
+    timeout-minutes: 25
+    steps:
+      - name: Run the reconciliation jobs
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          API_URL: https://api.revime.fr
+        run: |
+          if [ -z "$CRON_SECRET" ]; then
+            echo "::error::CRON_SECRET secret is not set"
+            exit 1
+          fi
+          # Retried, because a scheduled run always arrives at a spun-down
+          # instance. keepalive.yml pings the DATABASE through the pooler, which
+          # is what stops Supabase pausing and does nothing for this web
+          # instance, and Render's free plan sheds it after 15 minutes idle.
+          #
+          # 420 rather than the 120 this carried until 2026-08-18, because 120
+          # was measurably too short and the failure it produced read like an
+          # outage. Measured from Render's logs: the waking request at 13:12:52
+          # did not get the container RUNNING until 13:18:48 -- 5m56s before the
+          # app began to boot at all -- and it was serving at ~13:19:40, thirteen
+          # seconds AFTER the third 120s attempt had already given up. All three
+          # attempts reported HTTP 000 with 0 bytes received, so the run blamed
+          # the network for a spin-up proceeding normally. A second cold start
+          # the same afternoon took ~4 minutes.
+          #
+          # But it is VARIANCE, not a constant, and the difference matters to
+          # anyone tempted to re-tune this: a third cold start measured 22s to
+          # the container running and ~56s end to end, first attempt, no retry.
+          # So 120 was never a guaranteed failure -- it was a coin flip that had
+          # already lost once. 420 covers the observed worst case with margin
+          # and is sized on it rather than tested against it. The app's own boot
+          # is the stable part at ~28s; the variance is Render's scheduling.
+          #
+          # Still a retry loop rather than one long request, because the same
+          # logs show additional requests neither restart nor accelerate the
+          # spin-up: the container started ONCE, ~6 minutes after the first of
+          # three attempts. A client giving up does not cancel it.
+          for attempt in 1 2 3; do
+            code=$(curl -sS -o /tmp/out.json -w '%{http_code}' \
+              --max-time 420 \
+              -X POST "$API_URL/api/v1/internal/cron/run" \
+              -H "x-cron-secret: $CRON_SECRET") && true
+            if [ "$code" = "200" ]; then
+              cat /tmp/out.json
+              # R1: Validate shape before interpreting. Command substitution swallows
+              # jq's exit code, so malformed JSON or wrong shape would produce empty
+              # strings for both checks below and exit 0 — a green check every six
+              # hours. The shape check must precede the content checks because an
+              # empty result from `jq` means "nothing wrong" and "could not parse"
+              # identically.
+              if ! jq -e 'type == "object" and has("jobs") and (.jobs | type == "array")' /tmp/out.json >/dev/null 2>&1; then
+                echo "::error::Unexpected response body -- not a cron result. First 200 bytes:"
+                head -c 200 /tmp/out.json || true
+                exit 1
+              fi
+              # I-1: Parse the response and fail when any job has error !== null or
+              # failed > 0. The entire per-job counting design is unread without
+              # this — HTTP 200 with failed: 200 or error on all four jobs produces
+              # a green check every six hours.
+              has_error=$(jq -r '.jobs[] | select(.error != null) | .job' /tmp/out.json)
+              has_failures=$(jq -r '.jobs[] | select(.failed > 0) | "\(.job): \(.failed) failed"' /tmp/out.json)
+              if [ -n "$has_error" ]; then
+                echo "::error::Job(s) threw: $has_error"
+                exit 1
+              fi
+              if [ -n "$has_failures" ]; then
+                echo "::error::Job(s) had failures: $has_failures"
+                exit 1
+              fi
+              exit 0
+            fi
+            if [ -n "$code" ] && [ "$code" -ge 400 ] && [ "$code" -lt 500 ]; then
+              # 4xx is a configuration error, not a cold start. Retrying cannot fix a
+              # wrong or missing CRON_SECRET, and three attempts would bury the cause.
+              echo "::error::HTTP $code -- check that CRON_SECRET matches the value set on Render"
+              cat /tmp/out.json || true
+              exit 1
+            fi
+            echo "attempt $attempt got HTTP $code, retrying in 30s"
+            sleep 30
+          done
+          echo "::error::reconcile failed after 3 attempts"
+          cat /tmp/out.json || true
+          exit 1

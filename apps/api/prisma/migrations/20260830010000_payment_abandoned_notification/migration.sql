@@ -1,0 +1,24 @@
+-- Migration 24. CF-43: the client asked to be notified when a payment fails.
+--
+-- He wrote « paiement refusé » and that event cannot exist. `payments/gateway.ts` sets
+-- `payment_method_types: ['card']`, cards settle synchronously so
+-- `checkout.session.async_payment_failed` never fires, and a declined card never leaves
+-- Stripe Checkout. The only true failure signal is a session that EXPIRED with the
+-- commande still unpaid, which `abandonBySessionId` already handles — so the member is
+-- named for what we can observe, not for what he guessed the cause was.
+--
+-- 🛑 ONE STATEMENT, and the reason it is safe to run inside Prisma's transaction is
+-- version-dependent. Before Postgres 12, `ALTER TYPE ... ADD VALUE` could not run in a
+-- transaction block at all. From 12 on it can, with one rule: the new value may not be
+-- USED by a later statement in the SAME transaction. This file only adds it — no INSERT,
+-- no UPDATE, no DEFAULT referencing it — so that rule is not engaged. Do NOT add a
+-- backfill to this file; it would fail for that reason and not for an obvious one.
+--
+-- Measured rather than assumed, 2026-08-30: the target runs Postgres 17.6, and
+-- `NotificationType` held exactly the seven pre-CF-43 members, so this is purely additive.
+--
+-- No backfill is wanted anyway. This notifies a FUTURE lapse; retro-emitting rows for
+-- historically abandoned commandes would put notifications in clients' lists for
+-- payments they gave up on weeks ago.
+
+ALTER TYPE "NotificationType" ADD VALUE 'PAYMENT_ABANDONED';
