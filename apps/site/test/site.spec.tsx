@@ -12,9 +12,9 @@ import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { LEGAL_DOCUMENTS } from '../../mobile/src/lib/legal';
 import { PUBLIC_DOCUMENTS, findDocument } from '../lib/documents';
-import LegalDocumentPage, { generateStaticParams, dynamicParams } from '../app/[slug]/page';
-import AccountDeletionPage from '../app/suppression-compte/page';
-import HomePage from '../app/page';
+import LegalDocumentPage, { generateStaticParams, dynamicParams } from '../app/(public)/[slug]/page';
+import AccountDeletionPage from '../app/(public)/suppression-compte/page';
+import HomePage from '../app/(public)/page';
 
 /** Rendered markup reduced to the text a reader sees, whitespace collapsed. */
 function visibleText(html: string): string {
@@ -133,10 +133,34 @@ describe('the home page', () => {
 });
 
 describe('what the site does not serve', () => {
-  it('has only its own public routes: no admin, no sign-in, no API proxy', () => {
+  /*
+   * 24/11/2026: the site is becoming REVIME's web application (plan d'action SEO et site). It now
+   * serves robots.txt and sitemap.xml and proxies /api/* to the API (next.config.ts), and will gain
+   * the public SEO pages and the signed-in area phase by phase. The public pages sit in (public),
+   * the signed-in area in (espace), sign-in in connexion. Each new top-level route is added
+   * to this list on purpose, so nothing appears by accident. The admin stays a separate app.
+   */
+  it('has only the routes added on purpose, and never the admin', () => {
     const entries = readdirSync(join(__dirname, '../app')).sort();
     expect(entries).toEqual(
-      ['[slug]', 'globals.css', 'layout.tsx', 'not-found.tsx', 'page.tsx', 'suppression-compte'].sort(),
+      [
+        '(espace)',
+        '(public)',
+        'connexion',
+        'espace.css',
+        'globals.css',
+        'layout.tsx',
+        'not-found.tsx',
+        'robots.ts',
+        'sitemap.ts',
+      ].sort(),
+    );
+    expect(entries).not.toContain('admin');
+    expect(readdirSync(join(__dirname, '../app/(public)')).sort()).toEqual(
+      ['[slug]', 'layout.tsx', 'page.tsx', 'suppression-compte'].sort(),
+    );
+    expect(readdirSync(join(__dirname, '../app/(espace)')).sort()).toEqual(
+      ['accueil', 'demande', 'layout.tsx', 'mes-demandes', 'messages', 'profil', 'publier'].sort(),
     );
   });
 });

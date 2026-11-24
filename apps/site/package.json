@@ -10,7 +10,9 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@revime/shared": "*",
     "@revime/tokens": "*",
+    "better-auth": "^1.6.25",
     "next": "16.2.12",
     "react": "19.2.3",
     "react-dom": "19.2.3"
