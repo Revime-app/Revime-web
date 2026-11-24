@@ -13,8 +13,8 @@
 name: reconcile
 
 on:
-  schedule:
-    - cron: '23 */6 * * *'
+  # Copie de travail revime-web : planification désactivée.
+  # Ces tâches tournent depuis le dépôt d'origine (revime), pas depuis cette copie.
   workflow_dispatch:
 
 permissions: {}
