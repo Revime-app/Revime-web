@@ -130,3 +130,11 @@ describe('JSON-LD', () => {
     expect(b.itemListElement[1].item).toBe(`${SITE_URL}/reparation`);
   });
 });
+
+describe('the signed-in area stays out of search engines', () => {
+  it('blocks every signed-in path in robots.txt', () => {
+    for (const path of ['/accueil', '/publier', '/mes-demandes', '/demande/', '/messages', '/profil', '/connexion']) {
+      expect(PRIVATE_PATHS).toContain(path);
+    }
+  });
+});

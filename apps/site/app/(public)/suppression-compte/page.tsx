@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { SUPPORT_EMAIL } from '../../lib/documents';
-import { buildMetadata } from '../../lib/seo';
+import { SUPPORT_EMAIL } from '../../../lib/documents';
+import { buildMetadata } from '../../../lib/seo';
 
 export const metadata: Metadata = buildMetadata({
   title: 'Supprimer votre compte',

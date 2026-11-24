@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { LegalArticle } from '../../components/LegalArticle';
-import { PUBLIC_DOCUMENTS, findDocument } from '../../lib/documents';
-import { buildMetadata } from '../../lib/seo';
+import { LegalArticle } from '../../../components/LegalArticle';
+import { PUBLIC_DOCUMENTS, findDocument } from '../../../lib/documents';
+import { buildMetadata } from '../../../lib/seo';
 
 /** Only the app's documents exist; any other slug is a 404, never a dynamic render. */
 export const dynamicParams = false;

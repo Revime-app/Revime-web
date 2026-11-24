@@ -10,6 +10,9 @@ import { absoluteUrl } from '../lib/site';
  */
 export const PRIVATE_PATHS = [
   '/api/',
+  '/accueil',
+  '/demande/',
+  '/profil',
   '/compte',
   '/connexion',
   '/inscription',

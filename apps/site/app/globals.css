@@ -69,7 +69,20 @@ a:focus-visible {
 
 .bar {
   border-bottom: 1px solid var(--rule);
-  padding: 18px var(--gutter);
+  padding: 14px var(--gutter);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.bar__login {
+  font-weight: 600;
+  font-size: 15px;
+  text-decoration: none;
+  padding: 8px 16px;
+  border-radius: 999px;
+  background: var(--red);
+  color: #fff;
 }
 .bar__brand {
   display: inline-flex;

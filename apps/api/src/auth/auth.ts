@@ -42,6 +42,7 @@ import { activeCguVersion } from '../legal/legal-documents.service.js';
 import { activePrivacyVersion } from '../legal/privacy-version.js';
 import { applySignupMethod, recordUserPrivacyConsentProof, signupConsentFields } from './signup-consent.js';
 import { adminOrigins } from './admin-origins.js';
+import { siteOrigins } from './site-origins.js';
 import {
   CANONICAL_CGU_ACCEPTANCE_TEXT,
   CURRENT_CGU_VERSION,
@@ -144,7 +145,8 @@ export const auth = betterAuth({
   baseURL: resolveAuthBaseURL(process.env.BETTER_AUTH_URL),
   secret: process.env.BETTER_AUTH_SECRET,
   // V7 U10: every dashboard host, since its proxy forwards the browser's Origin (admin-origins.ts).
-  trustedOrigins: ['revime://', ...adminOrigins()],
+  // 24/11/2026: and the public site's hosts, whose /api proxy does the same (site-origins.ts).
+  trustedOrigins: ['revime://', ...adminOrigins(), ...siteOrigins()],
   /**
    * CF4-02: resolve the real client IP behind Render/Cloudflare so the rate limiter keys
    * per user instead of one shared bucket per path. Rationale and source citations in
