@@ -1,5 +1,5 @@
 import { Body, Controller, Get, Param, Post } from '@nestjs/common';
-import { Session, type UserSession } from '@thallesp/nestjs-better-auth';
+import { Session, type UserSession, OptionalAuth } from '@thallesp/nestjs-better-auth';
 import { createReviewSchema, type CreateReviewInput, type ReviewDto } from '@revime/shared';
 import { ZodValidationPipe } from '../common/zod-validation.pipe.js';
 import { ReviewsService } from './reviews.service.js';
@@ -33,11 +33,11 @@ export class ReviewsController {
    * its tests live with them. They differ in segment count, so neither can shadow the
    * other.
    *
-   * Behind the session guard like everything else: "public" here means every signed-in
-   * user, not anonymous. No route in this API is anonymous except health and the webhooks,
-   * and making this the first one is a decision nothing has asked for.
+   * 24/11/2026: open to signed-out visitors of the website (`@OptionalAuth`), with the fiche
+   * and the directory. A review only carries the author's first name and initial.
    */
   @Get('repairers/:userId/reviews')
+  @OptionalAuth()
   list(@Param('userId') userId: string): Promise<ReviewDto[]> {
     return this.reviews.listForRepairer(userId);
   }

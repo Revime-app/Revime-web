@@ -1,5 +1,5 @@
 import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Query } from '@nestjs/common';
-import { Session, type UserSession } from '@thallesp/nestjs-better-auth';
+import { Session, type UserSession, OptionalAuth } from '@thallesp/nestjs-better-auth';
 import { browseQuerySchema, createDemandeSchema, feedQuerySchema, signPhotoSchema, updateDemandeSchema, type BrowseQuery, type CreateDemandeInput, type DemandeDto, type DemandeListItem, type FeedItem, type FeedQuery, type PublicDemandeView, type SignPhotoInput, type SignPhotoResponse, type UpdateDemandeInput } from '@revime/shared';
 import { ZodValidationPipe } from '../common/zod-validation.pipe.js';
 import { DemandesService } from './demandes.service.js';
@@ -49,15 +49,19 @@ export class DemandesController {
   }
 
   /**
-   * CF4-24. Any signed-in user; read-only, public demandes only. Declared BEFORE the `:id`
-   * GET, so the literal `browse` is never read as an id (`demandes-browse.spec.ts` pins it).
+   * CF4-24. Read-only, public demandes only. Declared BEFORE the `:id` GET, so the literal
+   * `browse` is never read as an id (`demandes-browse.spec.ts` pins it).
+   *
+   * 24/11/2026: open to signed-out visitors of the website (`@OptionalAuth`), who may look at
+   * the demandes before creating an account. `PublicDemandeView` carries no author identity.
    */
   @Get('browse')
+  @OptionalAuth()
   browse(
-    @Session() session: UserSession,
+    @Session() session: UserSession | null,
     @Query(new ZodValidationPipe(browseQuerySchema)) query: BrowseQuery,
   ): Promise<PublicDemandeView[]> {
-    return this.demandes.browse(session.user.id, query);
+    return this.demandes.browse(session?.user?.id ?? null, query);
   }
 
   @Get(':id')

@@ -54,6 +54,18 @@ describe('DemandesService.browse', () => {
     expect(args.take).toBe(BROWSE_PAGE_SIZE);
   });
 
+  it('serves a signed-out visitor of the website the real side, with no caller to exclude', async () => {
+    const { service, findMany } = harness();
+    await service.browse(null, {} as BrowseQuery);
+    expect(argsOf(findMany).where).toEqual({
+      status: 'OPEN',
+      author: { email: { not: { endsWith: '@review.revime.fr' }, mode: 'insensitive' } },
+      deletedAt: null,
+      hiddenAt: null,
+      targetRepairerUserId: null,
+    });
+  });
+
   it('is available without réparateur mode', async () => {
     const { service, findMany } = harness();
     await expect(service.browse(ME, {} as BrowseQuery)).resolves.toEqual([]);
