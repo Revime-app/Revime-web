@@ -103,7 +103,8 @@ describe('every reader goes through the helper', () => {
     const cors = readFileSync(new URL('../src/configure-app.ts', import.meta.url), 'utf8');
     expect(cors).toMatch(/origin:\s*adminOrigins\(\)/);
     const auth = readFileSync(new URL('../src/auth/auth.ts', import.meta.url), 'utf8');
-    expect(auth).toMatch(/trustedOrigins:\s*\['revime:\/\/',\s*\.\.\.adminOrigins\(\)\]/);
+    // 24/11/2026: the public site's hosts follow the admin's (site-origins.ts).
+    expect(auth).toMatch(/trustedOrigins:\s*\['revime:\/\/',\s*\.\.\.adminOrigins\(\),\s*\.\.\.siteOrigins\(\)\]/);
   });
 });
 
