@@ -2,6 +2,8 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import localFont from 'next/font/local';
 import { PUBLIC_DOCUMENTS, SUPPORT_EMAIL } from '../lib/documents';
+import { DEFAULT_DESCRIPTION, SITE_NAME, SITE_URL } from '../lib/site';
+import { Analytics } from '../components/Analytics';
 import './globals.css';
 
 /** The charte graphique's one typeface. */
@@ -16,10 +18,12 @@ const googleSansFlex = localFont({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://revime.fr'),
-  title: 'Revime',
-  description: 'Revime met en relation des particuliers et des professionnels pour la réparation de leurs objets.',
+  metadataBase: new URL(SITE_URL),
+  title: { default: SITE_NAME, template: `%s | ${SITE_NAME}` },
+  description: DEFAULT_DESCRIPTION,
+  applicationName: SITE_NAME,
   icons: { icon: '/brand/revime-emblem.png', apple: '/brand/revime-emblem.png' },
+  formatDetection: { telephone: false },
 };
 
 const LOGO_H = 22;
@@ -61,6 +65,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </ul>
           </nav>
         </footer>
+        <Analytics />
       </body>
     </html>
   );

@@ -1,11 +1,13 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { SUPPORT_EMAIL } from '../../lib/documents';
+import { buildMetadata } from '../../lib/seo';
 
-export const metadata: Metadata = {
-  title: 'Supprimer votre compte | Revime',
+export const metadata: Metadata = buildMetadata({
+  title: 'Supprimer votre compte',
   description: 'Comment supprimer votre compte Revime, avec ou sans l’application, et ce qu’il advient de vos données.',
-};
+  path: '/suppression-compte',
+});
 
 /**
  * Google Play's account-deletion requirement: a public page, naming the app and the developer,

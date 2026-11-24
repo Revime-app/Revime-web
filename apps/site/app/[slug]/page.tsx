@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { LegalArticle } from '../../components/LegalArticle';
 import { PUBLIC_DOCUMENTS, findDocument } from '../../lib/documents';
+import { buildMetadata } from '../../lib/seo';
 
 /** Only the app's documents exist; any other slug is a 404, never a dynamic render. */
 export const dynamicParams = false;
@@ -15,7 +16,13 @@ type Props = { params: Promise<{ slug: string }> };
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const entry = findDocument(slug);
-  return entry ? { title: `${entry.label} | Revime` } : {};
+  return entry
+    ? buildMetadata({
+        title: entry.label,
+        description: `${entry.label} de REVIME, la plateforme de réparation entre particuliers et réparateurs.`,
+        path: `/${entry.slug}`,
+      })
+    : {};
 }
 
 export default async function LegalDocumentPage({ params }: Props) {
