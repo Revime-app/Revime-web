@@ -15,6 +15,7 @@ import { absoluteUrl } from '../lib/site';
 export default function sitemap(): MetadataRoute.Sitemap {
   return [
     { url: absoluteUrl('/') },
+    ...['/comment-ca-marche', '/protection-revime', '/devenir-reparateur', '/qui-sommes-nous', '/aide', '/reparateurs', '/demandes'].map((p) => ({ url: absoluteUrl(p) })),
     ...PUBLIC_DOCUMENTS.map((d) => ({ url: absoluteUrl(`/${d.slug}`) })),
     { url: absoluteUrl('/suppression-compte') },
   ];

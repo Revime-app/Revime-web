@@ -161,7 +161,7 @@ describe('what the site does not serve', () => {
       ['[slug]', 'layout.tsx', 'suppression-compte'].sort(),
     );
     expect(readdirSync(join(__dirname, '../app/(app)')).sort()).toEqual(
-      ['(compte)', 'HomeIslands.tsx', 'demandes', 'layout.tsx', 'page.tsx', 'publier', 'reparateurs'].sort(),
+      ['(compte)', 'HomeIslands.tsx', 'aide', 'comment-ca-marche', 'demandes', 'devenir-reparateur', 'layout.tsx', 'page.tsx', 'protection-revime', 'publier', 'qui-sommes-nous', 'reparateurs'].sort(),
     );
   });
 });
