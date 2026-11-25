@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import type { DemandeListItem, DirectoryCardDto, PublicDemandeView } from '@revime/shared';
+import { nextStep } from '../../lib/client/next-step';
 import { useApi } from '../../lib/client/use-api';
 import { useSession } from '../../lib/client/session';
 import { DemandeTile, MyDemandeRow, RepairerCard } from '../../components/app/cards';
@@ -68,25 +69,79 @@ export function HomeHeroSearch() {
   );
 }
 
+/** Most urgent first: the client's turn, then money, then what others are doing. */
+function urgency(d: DemandeListItem): number {
+  const n = nextStep(d);
+  if (!n) return 9;
+  if (n.who === 'you') return d.commande?.step === 'AWAITING_VALIDATION' ? 0 : d.commande?.status === 'PENDING_PAYMENT' ? 1 : 2;
+  return n.who === 'them' ? 5 : 8;
+}
+
+function todoTitle(d: DemandeListItem): string {
+  if (d.commande?.step === 'AWAITING_VALIDATION') return `La réparation de « ${d.title} » est terminée`;
+  if (d.commande?.status === 'PENDING_PAYMENT') return `Il reste à payer « ${d.title} »`;
+  if (d.offerCount > 1) return `${d.offerCount} réparateurs ont répondu pour « ${d.title} »`;
+  return `Un réparateur a répondu pour « ${d.title} »`;
+}
+
+function todoCta(d: DemandeListItem): string {
+  if (d.commande?.step === 'AWAITING_VALIDATION') return 'Vérifier et valider';
+  if (d.commande?.status === 'PENDING_PAYMENT') return 'Payer';
+  return d.offerCount > 1 ? `Comparer les ${d.offerCount} offres` : 'Voir l’offre';
+}
+
+/**
+ * The signed-in home starts with « the one thing to do today » (people come to their account for a
+ * task), then the other repairs, each saying who must act.
+ */
 function ActiveDemande() {
   const demandes = useApi<DemandeListItem[]>('/demandes/mine');
   const list = demandes.data ?? [];
-  const current = list.find((d) => d.status === 'OPEN' || d.status === 'IN_PROGRESS') ?? null;
-  if (demandes.loading || list.length === 0) return null;
+  if (demandes.loading) return null;
+  if (list.length === 0) {
+    return (
+      <section className="ap-todo ap-todo--first">
+        <div>
+          <strong>Votre compte est prêt. Qu’est-ce qu’on répare ?</strong>
+          <span>Décrivez votre premier objet : 3 questions, environ 2 minutes, gratuit et sans engagement.</span>
+        </div>
+        <Link href="/publier">Publier ma première demande</Link>
+      </section>
+    );
+  }
+  const live = list.filter((d) => nextStep(d)).sort((a, b) => urgency(a) - urgency(b));
+  const top = live[0] && nextStep(live[0])?.who === 'you' ? live[0] : null;
+  const others = live.filter((d) => d !== top).slice(0, 2);
   return (
-    <section className="ap-section" aria-labelledby="h-mine">
-      <div className="ap-section__head">
-        <h2 id="h-mine">Ma demande en cours</h2>
-        <Link href="/mes-demandes" className="ap-more">
-          Toutes mes demandes ({list.length})
-        </Link>
-      </div>
-      {current ? (
-        <MyDemandeRow d={current} highlight />
-      ) : (
-        <p className="ap-muted">Aucune demande en cours. Publiez-en une nouvelle avec le bouton « + ».</p>
+    <>
+      {top && (
+        <section className="ap-todo" aria-labelledby="h-todo">
+          <div>
+            <p className="ap-todo__eb" id="h-todo">
+              À faire aujourd’hui
+            </p>
+            <strong>{todoTitle(top)}</strong>
+            <span>{nextStep(top)?.text.replace(/^./, (c) => c.toUpperCase())}</span>
+          </div>
+          <Link href={`/mes-demandes/${top.id}`}>{todoCta(top)}</Link>
+        </section>
       )}
-    </section>
+      {others.length > 0 && (
+        <section className="ap-section" aria-labelledby="h-mine">
+          <div className="ap-section__head">
+            <h2 id="h-mine">{top ? 'Vos autres réparations' : 'Vos réparations en cours'}</h2>
+            <Link href="/mes-demandes" className="ap-more">
+              Toutes mes réparations ({list.length})
+            </Link>
+          </div>
+          <div className="ap-stack ap-stack--2">
+            {others.map((d) => (
+              <MyDemandeRow key={d.id} d={d} />
+            ))}
+          </div>
+        </section>
+      )}
+    </>
   );
 }
 

@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { nextStep } from '../../lib/client/next-step';
 import { VERIFIED_BADGE_LABEL, type DemandeListItem, type DirectoryCardDto, type PublicDemandeView } from '@revime/shared';
 import { CategoryIcon, iconForLabel } from './categories';
 import { IconChevronRight, IconPin, IconShieldCheck } from './icons';
@@ -75,6 +76,7 @@ export function MyDemandeRow({ d, highlight = false }: { d: DemandeListItem; hig
   const status = demandeStatus(d);
   const step = macroStep(status.currentIndex);
   const waiting = d.status === 'OPEN' && d.offerCount > 0;
+  const next = nextStep(d);
   return (
     <Link href={`/mes-demandes/${d.id}`} className={highlight ? 'ap-mine ap-mine--hi' : 'ap-mine'}>
       <span className="ap-mine__media" aria-hidden="true">
@@ -94,6 +96,11 @@ export function MyDemandeRow({ d, highlight = false }: { d: DemandeListItem; hig
           <Badge tone={status.tone}>{status.label}</Badge>
           {waiting && <span className="ap-mine__cta">Comparer</span>}
         </span>
+        {next && (
+          <span className={`ap-next ap-next--${next.who}`}>
+            <strong>{next.label} :</strong> {next.text}
+          </span>
+        )}
         {step >= 0 && (
           <span className="ap-steps" aria-label={`Étape ${step + 1} sur 4 : ${MACRO_STEPS[step]}`}>
             {MACRO_STEPS.map((s, i) => (
