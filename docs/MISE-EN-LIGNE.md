@@ -60,6 +60,20 @@ Dans le tableau de bord Stripe, en **mode test** d'abord (interrupteur en haut �
 - **Resend** : **Domains** → ajouter `revime.fr` et créer chez ton hébergeur de domaine les
   enregistrements DNS que Resend affiche. Puis **API Keys** → `RESEND_API_KEY`.
 
+## 3 bis. Boxtal (l'envoi par colis)
+
+Sur ton compte Boxtal :
+- **API v1** (prix des envois) : noter la clé d'accès et la clé secrète →
+  `BOXTAL_V1_ACCESS_KEY`, `BOXTAL_V1_SECRET_KEY`.
+- **API v3** (commandes, étiquettes, suivi) : créer une application v3 et noter ses clés →
+  `BOXTAL_V3_ACCESS_KEY`, `BOXTAL_V3_SECRET_KEY`.
+- `BOXTAL_WEBHOOK_SECRET` : une longue suite aléatoire que **tu inventes** (par ex. 40
+  caractères générés par ton gestionnaire de mots de passe). L'API crée elle-même, au
+  démarrage, les deux abonnements Boxtal (étiquette prête, suivi du colis) avec ce secret.
+
+Vérifier aussi dans Boxtal que le paiement est en prélèvement différé et que la limite
+d'encours convient : chaque envoi payé par un client achète une vraie étiquette sur ton compte.
+
 ## 4. Render (l'API et le site)
 
 1. Créer un compte sur render.com en te connectant **avec GitHub** (le compte qui a accès à
@@ -76,6 +90,7 @@ Dans le tableau de bord Stripe, en **mode test** d'abord (interrupteur en haut �
 | `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY` | étape 2 |
 | `STRIPE_WEBHOOK_SECRET`, `STRIPE_CONNECT_WEBHOOK_SECRET`, `STRIPE_IDENTITY_WEBHOOK_SECRET` | mettre `a-remplir` pour l'instant (étape 6) |
 | `TWILIO_…` (4 cases), `RESEND_API_KEY` | étape 3 |
+| `BOXTAL_…` (5 cases) | étape 3 bis |
 | `PUBLIC_API_URL`, `BETTER_AUTH_URL` | `https://api.revime.fr` |
 | `ADMIN_ORIGIN` | `https://admin.revime.fr` |
 | `BETTER_AUTH_SECRET`, `CRON_SECRET` | une longue suite aléatoire différente pour chacune (par ex. un mot de passe de 40 caractères généré par ton gestionnaire de mots de passe) |
@@ -140,6 +155,6 @@ tâches automatiques déjà prévues (rapprochement des paiements, maintien de l
   (`apps/mobile`).
 - **Connexion avec Google ou Apple** : il faut tes propres identifiants Google Cloud et Apple.
   À ajouter plus tard ; la connexion par e-mail fonctionne sans.
-- **Envoi par colis avec Boxtal** : en mode « prix fixe » tant qu'il n'y a pas de compte Boxtal
-  à ton nom (`SHIPPING_DRIVER=manual`).
+- **Colis sur le site** : le prix Boxtal calculé selon l'objet, les étiquettes et les points
+  relais se font dans l'appli ; le site les ajoutera ensuite.
 - **Tableau d'administration** (`apps/admin`) : à déployer ensuite sur `admin.revime.fr`.

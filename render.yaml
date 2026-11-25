@@ -306,8 +306,21 @@ services:
       # open as FACTS - and (e), the first real label pair, is still HIS explicit word: the first parcel
       # payment from build 7 buys real labels on the client's Boxtal account. Never drive one unprompted.
       # ═══════════════════════════════════════════════════════════════════════════
+      # 25/11/2026: Malek's own Boxtal account. Quoting turns on only once the five keys below are
+      # set (isShippingQuotesEnabled); the two webhook subscriptions are created by the API itself
+      # at start-up if missing (shipping/boxtal-subscriptions.ts).
       - key: SHIPPING_DRIVER
-        value: manual # Boxtal account not available yet: flat parcel fee, as the app handles
+        value: boxtal
+      - key: BOXTAL_V1_ACCESS_KEY
+        sync: false
+      - key: BOXTAL_V1_SECRET_KEY
+        sync: false
+      - key: BOXTAL_V3_ACCESS_KEY
+        sync: false
+      - key: BOXTAL_V3_SECRET_KEY
+        sync: false
+      - key: BOXTAL_WEBHOOK_SECRET
+        sync: false
       - key: SHIPPING_LABEL_BUCKET
         value: shipping-labels
       # ═══════════════════════════════════════════════════════════════════════════

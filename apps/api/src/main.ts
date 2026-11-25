@@ -15,9 +15,12 @@ import './instrument.js';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module.js';
 import { configureApp } from './configure-app.js';
+import { ensureBoxtalSubscriptions } from './shipping/boxtal-subscriptions.js';
 
 async function bootstrap(): Promise<void> {
   const app = configureApp(await NestFactory.create(AppModule, { bodyParser: false }));
   await app.listen(process.env.PORT ?? 3000);
+  // Boxtal label and tracking webhooks: created once if missing (shipping/boxtal-subscriptions.ts).
+  void ensureBoxtalSubscriptions();
 }
 void bootstrap();
