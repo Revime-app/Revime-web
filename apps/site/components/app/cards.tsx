@@ -32,11 +32,11 @@ export function DemandeTile({ d, onOpen }: { d: PublicDemandeView; onOpen?: () =
     </>
   );
   return onOpen ? (
-    <button type="button" className="ap-tile" onClick={onOpen}>
+    <button type="button" className="ap-tile ap-spot" onClick={onOpen}>
       {body}
     </button>
   ) : (
-    <Link href="/demandes" className="ap-tile">
+    <Link href="/demandes" className="ap-tile ap-spot">
       {body}
     </Link>
   );
@@ -45,7 +45,7 @@ export function DemandeTile({ d, onOpen }: { d: PublicDemandeView; onOpen?: () =
 /** One réparateur in a list: his face first, then how trusted he is and where he works. */
 export function RepairerCard({ r }: { r: DirectoryCardDto }) {
   return (
-    <Link href={`/reparateurs/${r.userId}`} className="ap-rcard">
+    <Link href={`/reparateurs/${r.userId}`} className="ap-rcard ap-spot">
       <span className="ap-rcard__cover" aria-hidden="true">
         {r.avatarUrl ? (
           // eslint-disable-next-line @next/next/no-img-element

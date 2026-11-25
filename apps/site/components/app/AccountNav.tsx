@@ -4,7 +4,11 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useSession } from '../../lib/client/session';
 import {
+  IconBriefcase,
+  IconCompare,
   IconHeart,
+  IconHome,
+  IconSearch,
   IconInbox,
   IconLogout,
   IconMessage,
@@ -29,13 +33,24 @@ export const ACCOUNT_LINKS = [
   { href: '/parametres', label: 'Paramètres', sub: 'Compte, mode et documents', icon: IconSettings },
 ] as const;
 
+/** The réparateur's rubriques, in the app's words (Profil tab, réparateur mode). */
+export const PRO_LINKS = [
+  { href: '/tableau-de-bord', label: 'Tableau de bord', sub: 'À faire et activité', icon: IconHome },
+  { href: '/demandes', label: 'Demandes près de chez moi', sub: 'Faire une offre', icon: IconSearch },
+  { href: '/mes-propositions', label: 'Mes propositions', sub: 'Offres et devis demandés', icon: IconCompare },
+  { href: '/mes-missions', label: 'Mes réparations', sub: 'En cours, revenus', icon: IconBriefcase },
+  { href: '/messages', label: 'Messages', sub: 'Vos conversations', icon: IconMessage },
+  { href: '/profil-pro', label: 'Mon profil public', sub: 'Ce que voient les clients', icon: IconUser },
+  { href: '/parametres', label: 'Paramètres', sub: 'Compte, mode et documents', icon: IconSettings },
+] as const;
+
 export function AccountNav() {
   const pathname = usePathname();
   const router = useRouter();
   const { me, signOut } = useSession();
   const name = me ? [me.firstName, me.lastName].filter(Boolean).join(' ') || me.username : '';
   return (
-    <aside className="ap-acnav" aria-label="Mon espace">
+    <aside className={me?.profile.activeMode === 'REPAIRER' ? 'ap-acnav ap-acnav--pro' : 'ap-acnav'} aria-label="Mon espace">
       {me && (
         <Link href="/profil" className="ap-acnav__me">
           <span className="ap-acnav__av" aria-hidden="true">
@@ -49,7 +64,7 @@ export function AccountNav() {
       )}
       <ModeSwitch compact />
       <nav>
-        {ACCOUNT_LINKS.map(({ href, label, icon: Icon }) => (
+        {(me?.profile.activeMode === 'REPAIRER' ? PRO_LINKS : ACCOUNT_LINKS).map(({ href, label, icon: Icon }) => (
           <Link key={href} href={href} aria-current={pathname === href || pathname.startsWith(`${href}/`) ? 'page' : undefined}>
             <span className="ap-acnav__ic">
               <Icon size={18} />

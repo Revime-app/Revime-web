@@ -158,8 +158,7 @@ export function HomePersonal({ slot }: { slot: 'greeting' | 'active' }) {
 }
 
 /**
- * Réparateur mode on the site, for now: the demandes of the quartier are here, the rest (sending
- * offers, propositions, revenus) is in the app with the same account. Said once, in Bleu Ink.
+ * Réparateur mode: the home points to the tableau de bord, in Bleu Ink.
  */
 function ProHome() {
   return (
@@ -168,10 +167,10 @@ function ProHome() {
         <p className="ap-todo__eb" id="h-pro-home">
           Mode réparateur
         </p>
-        <strong>Les demandes de votre quartier vous attendent</strong>
-        <span>Parcourez-les ici. Pour envoyer une offre et suivre vos revenus, utilisez l’appli REVIME avec le même compte.</span>
+        <strong>Votre tableau de bord vous attend</strong>
+        <span>Ce qui est à faire aujourd’hui, vos réparations en cours et les demandes de votre quartier.</span>
       </div>
-      <Link href="/demandes">Voir les demandes</Link>
+      <Link href="/tableau-de-bord">Ouvrir mon tableau de bord</Link>
     </section>
   );
 }

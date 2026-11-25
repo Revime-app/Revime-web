@@ -4,8 +4,10 @@ import { IconArrowLeft } from './icons';
 
 export function Loader() {
   return (
-    <div className="ap-center" role="status" aria-live="polite">
-      <span className="ap-spinner" />
+    <div className="ap-skel" role="status" aria-live="polite">
+      <span />
+      <span />
+      <span />
       <span className="ap-sr">Chargement…</span>
     </div>
   );

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import type { DemandeListItem } from '@revime/shared';
 import { useRequireSession, useSession } from '../../../../lib/client/session';
 import { useApi } from '../../../../lib/client/use-api';
-import { ACCOUNT_LINKS } from '../../../../components/app/AccountNav';
+import { ACCOUNT_LINKS, PRO_LINKS } from '../../../../components/app/AccountNav';
 import { IconBadgeCheck, IconChevronRight, IconLogout } from '../../../../components/app/icons';
 import { Loader, initials } from '../../../../components/app/ui';
 import { ModeSwitch } from '../../../../components/app/ModeSwitch';
@@ -68,7 +68,7 @@ export default function ProfilPage() {
 
       <h2 className="ap-eyebrow-h ap-only-phone">Raccourcis</h2>
       <nav className="ap-shortcuts ap-only-phone" aria-label="Raccourcis">
-        {ACCOUNT_LINKS.filter((l) => l.href !== '/profil').map(({ href, label, sub, icon: Icon }) => (
+        {(me.profile.activeMode === 'REPAIRER' ? PRO_LINKS : ACCOUNT_LINKS).filter((l) => l.href !== '/profil').map(({ href, label, sub, icon: Icon }) => (
           <Link key={href} href={href}>
             <span className="ap-shortcuts__ic">
               <Icon size={22} />

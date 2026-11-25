@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { BROWSE_PAGE_SIZE, type PublicDemandeView } from '@revime/shared';
 import { useApi } from '../../../lib/client/use-api';
+import { useSession } from '../../../lib/client/session';
 import { FilterBar, SearchTabs, useBrowseFilters } from '../../../components/app/Browse';
 import { DemandeTile } from '../../../components/app/cards';
 import { CategoryIcon, iconForLabel } from '../../../components/app/categories';
@@ -11,6 +12,9 @@ import { IconClose, IconPin } from '../../../components/app/icons';
 import { Loader, ago, euroFmt } from '../../../components/app/ui';
 
 function DemandeSheet({ d, onClose }: { d: PublicDemandeView; onClose: () => void }) {
+  const { status, me } = useSession();
+  const signedIn = status === 'in';
+  const pro = me?.profile.activeMode === 'REPAIRER';
   useEffect(() => {
     const esc = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
     document.addEventListener('keydown', esc);
@@ -43,13 +47,20 @@ function DemandeSheet({ d, onClose }: { d: PublicDemandeView; onClose: () => voi
         <p className="ap-sheet__budget">
           {d.budgetCents !== null ? `Budget du client : ${euroFmt(d.budgetCents)}` : 'Le client attend vos offres.'}
         </p>
-        <div className="ap-note">
-          <strong>Vous êtes réparateur ?</strong>
-          <span>Les offres se font dans l’appli REVIME pour l’instant. L’espace réparateur arrive sur le site.</span>
-        </div>
-        <Link href="/publier" className="ap-btn ap-btn--secondary ap-btn--block">
-          J’ai la même panne : publier ma demande
-        </Link>
+        {pro ? (
+          <Link href={`/demandes/${d.id}/offre`} className="ap-btn ap-btn--pro ap-btn--block ap-btn--lg">
+            Faire une offre
+          </Link>
+        ) : (
+          <>
+            <Link href={signedIn ? `/demandes/${d.id}/offre` : `/connexion?suite=${encodeURIComponent(`/demandes/${d.id}/offre`)}`} className="ap-btn ap-btn--pro ap-btn--block">
+              Je suis réparateur : faire une offre
+            </Link>
+            <Link href="/publier" className="ap-btn ap-btn--secondary ap-btn--block">
+              J’ai la même panne : publier ma demande
+            </Link>
+          </>
+        )}
       </div>
     </div>
   );

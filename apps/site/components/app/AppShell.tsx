@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { Spotlight } from './Spotlight';
 import { usePathname } from 'next/navigation';
 import { DEMO } from '../../lib/client/config';
 import { useSession } from '../../lib/client/session';
@@ -24,7 +25,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const loginHref = (to: string) => (signedIn ? to : `/connexion?suite=${encodeURIComponent(to)}`);
   const searching = isOn(pathname, '/reparateurs') || isOn(pathname, '/demandes');
   const pro = signedIn && me?.profile.activeMode === 'REPAIRER';
-  const inAccount = ['/profil', '/mes-demandes', '/offres-recues', '/favoris', '/parametres'].some((h) => isOn(pathname, h));
+  const inAccount = ['/profil', '/mes-demandes', '/offres-recues', '/favoris', '/parametres', '/mes-propositions', '/mes-missions', '/profil-pro', '/commandes'].some((h) => isOn(pathname, h));
   /** The visitor's four doors: the same bar shape as the app, with what a visitor needs. */
   const visitorTabs = [
     { href: '/', label: 'Accueil', icon: IconHome, on: pathname === '/', cls: undefined },
@@ -34,7 +35,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   ];
   /** Signed in: the app's tab bar, word for word (Accueil, Recherche, Messages, Profil). */
   const memberTabs = [
-    { href: '/', label: 'Accueil', icon: IconHome, on: pathname === '/', cls: undefined },
+    { href: pro ? '/tableau-de-bord' : '/', label: 'Accueil', icon: IconHome, on: pathname === '/' || isOn(pathname, '/tableau-de-bord'), cls: undefined },
     { href: pro ? '/demandes' : '/reparateurs', label: 'Recherche', icon: IconSearch, on: searching, cls: undefined },
     { href: '/messages', label: 'Messages', icon: IconMessage, on: isOn(pathname, '/messages'), cls: undefined },
     { href: '/profil', label: 'Profil', icon: IconUser, on: inAccount, cls: undefined },
@@ -42,6 +43,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="ap">
+      <Spotlight />
+      <div className="ap-progress" aria-hidden="true" />
       <a className="ap-skip" href="#contenu">
         Aller au contenu
       </a>
@@ -88,7 +91,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <SiteFooter />
 
       <nav className="ap-tabs" aria-label="Navigation">
-        <Link href="/" className="ap-tab" aria-current={pathname === '/' ? 'page' : undefined}>
+        <Link href={pro ? '/tableau-de-bord' : '/'} className="ap-tab" aria-current={pathname === '/' || isOn(pathname, '/tableau-de-bord') ? 'page' : undefined}>
           <IconHome size={22} />
           <span>Accueil</span>
         </Link>

@@ -332,7 +332,146 @@ const me = {
   emailVerified: true,
   phoneVerified: true,
   profile: { activeMode: 'CLIENT' as 'CLIENT' | 'REPAIRER', clientEnabled: true, repairerEnabled: true },
+  messagingEnabled: true,
+  shippingQuotesEnabled: false,
+  stripeTestMode: true,
+  repairer: {
+    kind: 'PRO' as 'PRO' | 'INDIVIDUAL',
+    displayName: 'Atelier Léa Répare',
+    bio: 'Réparation de smartphones et petit électroménager depuis 2016, à Lyon 3e.',
+    postalCode: '69003' as string | null,
+    serviceAreaLabel: 'Lyon 3e' as string | null,
+    serviceRadiusKm: 15 as number | null,
+    categoryIds: [] as string[],
+    availability: [] as { dayOfWeek: number; closed: boolean; opensAt: number | null; closesAt: number | null }[],
+  },
 };
+
+/* ---------- Réparateur side ---------- */
+const dAgo = (days: number) => new Date(Date.now() - days * 86_400_000).toISOString();
+const proCommandes = [
+  { id: 'cmd-1', demandeId: 'pub-1', demandeTitle: 'Batterie de MacBook Air qui ne tient plus', counterpartyName: 'Sofia B.', delivery: 'WORKSHOP', step: 'PAID', status: 'PAID', payoutCents: 10560, totalCents: 12900, createdAt: dAgo(1), releasedAt: null, disputeOpen: false },
+  { id: 'cmd-2', demandeId: 'pub-4', demandeTitle: 'Manette PS5 qui dérive', counterpartyName: 'Hugo L.', delivery: 'HOME', step: 'REPAIR_DONE', status: 'PAID', payoutCents: 3960, totalCents: 5000, createdAt: dAgo(4), releasedAt: null, disputeOpen: false },
+  { id: 'cmd-3', demandeId: 'pub-7', demandeTitle: 'Cafetière Nespresso qui fuit', counterpartyName: 'Nadia K.', delivery: 'WORKSHOP', step: 'RELEASED', status: 'PAID', payoutCents: 5280, totalCents: 6600, createdAt: dAgo(12), releasedAt: dAgo(8), disputeOpen: false },
+  { id: 'cmd-4', demandeId: 'pub-8', demandeTitle: 'Vélo : freins qui frottent', counterpartyName: 'Tom R.', delivery: 'WORKSHOP', step: 'RELEASED', status: 'PAID', payoutCents: 3080, totalCents: 3900, createdAt: dAgo(20), releasedAt: dAgo(17), disputeOpen: false },
+];
+const proOffers = [
+  { id: 'po-1', demandeId: 'pub-2', demandeTitle: 'Trottinette Xiaomi qui ne démarre plus', priceCents: 7500, delayHours: 48, status: 'SENT', createdAt: dAgo(0.3) },
+  { id: 'po-2', demandeId: 'pub-5', demandeTitle: 'Montre automatique qui retarde', priceCents: 9000, delayHours: 168, status: 'SENT', createdAt: dAgo(2) },
+  { id: 'po-3', demandeId: 'pub-1', demandeTitle: 'Batterie de MacBook Air qui ne tient plus', priceCents: 11900, delayHours: 48, status: 'ACCEPTED', createdAt: dAgo(3) },
+  { id: 'po-4', demandeId: 'pub-6', demandeTitle: 'Chaise en bois à recoller', priceCents: 6000, delayHours: 336, status: 'REJECTED', createdAt: dAgo(9) },
+];
+const proQuotes = [
+  { demandeId: 'pub-3', title: 'Ressemeler des bottines en cuir', clientName: 'Claire M.', status: 'OPEN', expiresAt: null, closedReason: null, liveQuote: null, createdAt: dAgo(0.5) },
+];
+function commandeDto(id: string) {
+  const c = proCommandes.find((x) => x.id === id);
+  if (!c) return undefined;
+  const repairCents = Math.round(c.totalCents / 1.045 - 290);
+  return {
+    ...c,
+    offerId: 'po-x',
+    repairerName: me.repairer.displayName,
+    repairCents,
+    shippingCents: 0,
+    protectionCents: c.totalCents - repairCents,
+    executionDelayPreference: 'IMMEDIATE',
+    withdrawalWaiverAcceptedAt: null,
+    withdrawalPeriodEndsAt: null,
+    viewerRole: me.profile.activeMode === 'REPAIRER' ? 'REPAIRER' : 'CLIENT',
+    paidAt: c.createdAt,
+    releaseRequestedAt: null,
+    returnSentAt: null,
+    refundedAt: null,
+    refundedCents: null,
+    outboundTrackingNumber: null,
+    returnTrackingNumber: null,
+    myAddressSubmitted: false,
+    paymentUnderReview: false,
+    reviewed: false,
+    disputeOpenedAt: null,
+    hasStripeTransfer: c.step === 'RELEASED',
+  };
+}
+const NEXT: Record<string, string> = { PAID: 'REPAIR_STARTED', REPAIR_STARTED: 'REPAIR_DONE', REPAIR_DONE: 'AWAITING_VALIDATION', AWAITING_VALIDATION: 'RELEASED' };
+
+function demoPro(method: string, p: string, body: unknown): unknown {
+  if (method === 'GET') {
+    if (p === '/repairers/me/dashboard') {
+      return {
+        todo: [
+          { kind: 'ATTENTION', count: 1, commandeId: 'cmd-1' },
+          { kind: 'QUOTE_REQUESTS', count: 1 },
+          { kind: 'MATCHING', count: 6 },
+        ],
+        activity: [
+          { kind: 'OFFER_ACCEPTED', at: dAgo(1), commandeId: 'cmd-1', subject: 'Batterie de MacBook Air', amountCents: null, rating: null },
+          { kind: 'FUNDS_RELEASED', at: dAgo(8), commandeId: 'cmd-3', subject: 'Cafetière Nespresso', amountCents: 5280, rating: null },
+          { kind: 'REVIEW_RECEIVED', at: dAgo(7.5), commandeId: 'cmd-3', subject: 'Cafetière Nespresso', amountCents: null, rating: 5 },
+          { kind: 'FUNDS_RELEASED', at: dAgo(17), commandeId: 'cmd-4', subject: 'Vélo : freins', amountCents: 3080, rating: null },
+        ],
+      };
+    }
+    if (p === '/commandes') return proCommandes;
+    const cm = p.match(/^\/commandes\/([^/]+)$/);
+    if (cm) return commandeDto(cm[1]!) ?? commandeDto('cmd-1');
+    if (p === '/offers/mine') return proOffers;
+    if (p === '/connect/status') return { status: 'ENABLED', entityType: 'individual', transfersActive: false, lastSyncedAt: null };
+    if (p === '/repairers/me/quote-requests') return proQuotes;
+    if (p === '/users/me/particular-quota') return { quota: null, offerBlockedMessage: null };
+    const dm = p.match(/^\/demandes\/(pub-[^/]+)$/);
+    if (dm) {
+      const b = browse.find((x) => x.id === dm[1]);
+      if (b) return { ...b, brand: null, model: null, parts: 'UNKNOWN', mode: b.budgetCents ? 'BUDGET' : 'OFFERS', postalCode: '69000', status: 'OPEN', commande: null, offerCount: 2, photoUrls: [], distanceKm: 3.2, author: null, quoteRequest: null, isPrivate: false };
+    }
+    return undefined;
+  }
+  if (/^\/demandes\/[^/]+\/offers$/.test(p)) return { id: `po-${Date.now()}` };
+  const step = p.match(/^\/commandes\/([^/]+)\/steps$/);
+  if (step) {
+    const c = proCommandes.find((x) => x.id === step[1]);
+    if (c) c.step = (body as { step: string }).step;
+    return commandeDto(step[1]!);
+  }
+  const rel = p.match(/^\/commandes\/([^/]+)\/release$/);
+  if (rel) {
+    const c = proCommandes.find((x) => x.id === rel[1]);
+    if (c) c.step = 'RELEASED';
+    return commandeDto(rel[1]!);
+  }
+  if (/^\/commandes\/[^/]+\/review$/.test(p)) return { ok: true };
+  if (p === '/connect/onboarding') return { clientSecret: 'demo', publishableKey: 'demo', url: '/tableau-de-bord' };
+  if (p === '/repairers/me/dashboard-seen') return { ok: true };
+  if (/^\/demandes\/[^/]+\/quote\//.test(p)) {
+    proQuotes.length = 0;
+    return { ok: true };
+  }
+  if (/^\/offers\/[^/]+$/.test(p) && method === 'DELETE') {
+    const o = proOffers.find((x) => p.endsWith(x.id));
+    if (o) o.status = 'WITHDRAWN';
+    return null;
+  }
+  if (p === '/users/me/repairer-profile' || p === '/users/me/repairer') {
+    Object.assign(me.repairer, body as object);
+    return me;
+  }
+  if (p === '/users/me/categories') {
+    me.repairer.categoryIds = (body as { categoryIds: string[] }).categoryIds;
+    return me;
+  }
+  if (p === '/users/me/availability') {
+    me.repairer.availability = (body as { days: typeof me.repairer.availability }).days;
+    return me;
+  }
+  if (p === '/users/me/modes') {
+    const b = body as { activeMode?: 'CLIENT' | 'REPAIRER'; kind?: 'PRO' | 'INDIVIDUAL' };
+    if (b.activeMode) me.profile.activeMode = b.activeMode;
+    if (b.kind) me.repairer.kind = b.kind;
+    return me;
+  }
+  return undefined;
+}
+void NEXT;
 
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -389,6 +528,8 @@ const inbox = (): ConversationListItem[] =>
 export async function demoGet<T>(path: string): Promise<T> {
   await wait(150);
   const p = path.split('?')[0]!;
+  const pro = demoPro('GET', p, undefined);
+  if (pro !== undefined) return pro as T;
   if (p === '/users/me') return me as T;
   if (p === '/categories') return DEMO_CATEGORIES as T;
   if (p === '/demandes/mine') return demandes as T;
@@ -464,8 +605,10 @@ export async function demoGet<T>(path: string): Promise<T> {
   throw new Error(`Demo: no data for ${path}`);
 }
 
-export async function demoPost<T>(path: string, body: unknown): Promise<T> {
+export async function demoPost<T>(path: string, body: unknown, method = 'POST'): Promise<T> {
   await wait(400);
+  const pro = demoPro(method, path, body);
+  if (pro !== undefined) return pro as T;
   if (path === '/users/me/modes') {
     Object.assign(me.profile, body as object);
     return me as T;

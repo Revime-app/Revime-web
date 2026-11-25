@@ -264,13 +264,23 @@ function Detail({ id }: { id: string }) {
             )}
           </div>
           {offers.loading && <Loader />}
-          {!offers.loading && live.length === 0 && (
+          {d.commande && (
+            <Link href={`/commandes/${d.commande.commandeId}`} className="ap-todo">
+              <div>
+                <p className="ap-todo__eb">Réparation en cours</p>
+                <strong>Suivre ma réparation</strong>
+                <span>Les étapes, le paiement protégé et la validation.</span>
+              </div>
+              <span className="ap-todo__btn">Ouvrir</span>
+            </Link>
+          )}
+          {!offers.loading && live.length === 0 && !d.commande && (
             <div className="ap-empty">
               <strong>{d.status === 'OPEN' ? 'En attente d’offres' : 'Aucune offre en cours'}</strong>
               <span>
                 {d.status === 'OPEN'
                   ? 'Les réparateurs proches de chez vous ont été prévenus. Comptez en général quelques heures pour les premières offres.'
-                  : 'Le suivi de la réparation arrive sur le site. Il est déjà dans l’appli.'}
+                  : 'Cette demande n’attend plus d’offres.'}
               </span>
             </div>
           )}

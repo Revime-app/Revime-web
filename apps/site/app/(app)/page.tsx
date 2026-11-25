@@ -31,6 +31,19 @@ export default function HomePage() {
             <span className="ap-line"><span>Une réparation ?</span></span>
             <span className="ap-line"><span>Comparez, puis choisissez.</span></span>
           </h1>
+          <p className="ap-ticker" aria-label="On répare les téléphones, les ordinateurs, les vélos, l’électroménager, les consoles et les montres.">
+            <span aria-hidden="true">On répare</span>
+            <span className="ap-ticker__win" aria-hidden="true">
+              <ul className="ap-ticker__list">
+                <li>les téléphones</li>
+                <li>les ordinateurs</li>
+                <li>les vélos</li>
+                <li>l’électroménager</li>
+                <li>les consoles</li>
+                <li>les montres</li>
+              </ul>
+            </span>
+          </p>
           <p className="ap-hero__lede">
             REVIME vous met en relation avec des réparateurs vérifiés près de chez vous. Vous comparez leurs offres, et le
             réparateur est payé seulement quand c’est réparé.

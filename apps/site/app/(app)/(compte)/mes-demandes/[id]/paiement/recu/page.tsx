@@ -108,7 +108,7 @@ function Received({ id }: { id: string }) {
           </li>
         </ol>
         <div className="ap-row-actions">
-          <Link href={back} className="ap-btn ap-btn--primary">Suivre ma réparation</Link>
+          <Link href={commandeId ? `/commandes/${commandeId}` : back} className="ap-btn ap-btn--primary">Suivre ma réparation</Link>
           <Link href="/messages" className="ap-btn ap-btn--secondary">Écrire au réparateur</Link>
         </div>
         <p className="ap-hint">
