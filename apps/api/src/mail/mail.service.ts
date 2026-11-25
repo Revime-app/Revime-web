@@ -24,7 +24,7 @@ class ResendMailSender implements MailSender {
       // The SDK RETURNS an API refusal (bad recipient, rate limit, unverified domain) as
       // `{ error }` and throws only on a network failure, so the result has to be read.
       const { error } = await this.client.emails.send({
-        from: 'Revime <no-reply@revime.fr>',
+        from: process.env.MAIL_FROM || 'Revime <no-reply@revime.fr>',
         to: mail.to,
         subject: mail.subject,
         text: mail.text,

@@ -673,6 +673,10 @@ services:
         sync: false
       - key: ADMIN_ORIGIN
         sync: false
+      # Expéditeur des e-mails. revime.fr est encore pris par l'ancien compte Resend :
+      # on envoie depuis le sous-domaine mail.revime.fr, vérifié sur le Resend de Malek.
+      - key: MAIL_FROM
+        value: Revime <no-reply@mail.revime.fr>
       - key: RESEND_API_KEY
         sync: false
       # Twilio Verify, never committed. The four values on the live service point
