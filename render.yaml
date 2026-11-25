@@ -40,13 +40,15 @@ services:
     # roughly a minute, so UPGRADE TO starter BEFORE ANY CLIENT DEMO - on a phone a
     # cold start looks like a broken app, not a waking server. The proposal already
     # disclosed ~16 EUR/month for the API, so the upgrade is within what was agreed.
-    plan: starter
+    # free until a payment card is on the Render account (then: starter, no cold starts).
+    plan: free
     region: frankfurt # EU, alongside the Paris database
     branch: main
     autoDeploy: true
     healthCheckPath: /api/v1/health
-    domains:
-      - api.revime.fr
+    # api.revime.fr is still attached to the former developer's Render account (« domain already
+    # taken »). Until it is released, the API answers on its onrender.com address; add it back here
+    # once freed. The site points at whichever address API_URL holds.
     # Documentation-only pushes must not redeploy the API. PROJECT_ROADMAP.md is
     # updated at the end of every session and each push was costing a full build,
     # restart and cold start for a file the runtime never reads.
@@ -802,7 +804,7 @@ services:
   - type: web
     name: revime-site
     runtime: node
-    plan: starter
+    plan: free
     region: frankfurt
     branch: main
     autoDeploy: true
@@ -815,7 +817,8 @@ services:
     envVars:
       - key: NODE_VERSION
         value: "24"
+      # The API's public address (onrender.com until api.revime.fr is released). Read at build time.
       - key: API_URL
-        value: https://api.revime.fr
+        sync: false
       - key: NEXT_PUBLIC_SITE_URL
         value: https://revime.fr
