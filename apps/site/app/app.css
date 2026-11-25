@@ -1223,6 +1223,8 @@
   flex-direction: column;
   text-align: left;
   padding: 0;
+  border: 0;
+  font: inherit;
   box-shadow: var(--shadow);
   border-radius: var(--r-card);
   background: var(--white);
@@ -2417,4 +2419,39 @@
   .ap-bigsearch .ap-btn {
     flex-basis: 100%;
   }
+}
+/* App ScreenMotif: soft blob + dotted arc behind the screen, as in the mobile app. */
+.ap-main {
+  position: relative;
+  isolation: isolate;
+}
+.ap-motif {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(50% - 50vw);
+  width: 100vw;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: -1;
+}
+.ap-motif__blob {
+  position: absolute;
+  width: clamp(200px, 26vw, 380px);
+  aspect-ratio: 1;
+  border-radius: 46% 54% 58% 42% / 52% 44% 56% 48%;
+  background: var(--red-soft);
+  opacity: 0.5;
+}
+.ap-motif__arc {
+  position: absolute;
+  width: clamp(150px, 18vw, 260px);
+  height: auto;
+  aspect-ratio: 1;
+  color: var(--red);
+  opacity: 0.28;
+}
+html,
+body {
+  overflow-x: clip;
 }

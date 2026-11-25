@@ -19,11 +19,11 @@ export function SearchTabs() {
   const qs = keep.toString() ? `?${keep}` : '';
   return (
     <div className="ap-seg ap-seg--wide" role="tablist" aria-label="Rechercher">
-      <Link role="tab" aria-selected={pathname.startsWith('/reparateurs')} href={`/reparateurs${qs}`}>
-        Réparateurs
-      </Link>
       <Link role="tab" aria-selected={pathname.startsWith('/demandes')} href={`/demandes${qs}`}>
         Demandes
+      </Link>
+      <Link role="tab" aria-selected={pathname.startsWith('/reparateurs')} href={`/reparateurs${qs}`}>
+        Réparateurs
       </Link>
     </div>
   );

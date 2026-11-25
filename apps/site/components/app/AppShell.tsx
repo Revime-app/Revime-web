@@ -120,11 +120,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </Link>
           <HeaderSearch />
           <nav className="ap-nav" aria-label="Principale">
-            <Link href="/reparateurs" aria-current={isOn(pathname, '/reparateurs') ? 'page' : undefined}>
-              Réparateurs
-            </Link>
             <Link href="/demandes" aria-current={isOn(pathname, '/demandes') ? 'page' : undefined}>
               Demandes
+            </Link>
+            <Link href="/reparateurs" aria-current={isOn(pathname, '/reparateurs') ? 'page' : undefined}>
+              Réparateurs
             </Link>
             {signedIn && (
               <>
@@ -152,6 +152,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </header>
 
       <main id="contenu" className="ap-main">
+        <ScreenMotif pathname={pathname} />
         {children}
       </main>
 
@@ -162,7 +163,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <IconHome size={22} />
           <span>Accueil</span>
         </Link>
-        <Link href="/reparateurs" className="ap-tab" aria-current={searching ? 'page' : undefined}>
+        <Link href="/demandes" className="ap-tab" aria-current={searching ? 'page' : undefined}>
           <IconSearch size={22} />
           <span>Recherche</span>
         </Link>
@@ -182,6 +183,45 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <span>Profil</span>
         </Link>
       </nav>
+    </div>
+  );
+}
+
+/**
+ * The app's ScreenMotif (apps/mobile/src/components/ScreenMotif.tsx): a soft Rouge Punch blob
+ * and a dotted arc behind each screen, in one of six compositions. Same shapes and opacities;
+ * the composition is picked from the path so a page always wears the same one.
+ */
+const MOTIFS = [
+  { blob: 'top:-60px;right:-50px', arc: 'bottom:90px;left:-40px', rot: 20, sweep: 210 },
+  { blob: 'top:-44px;left:-40px', arc: 'top:45%;right:-48px', rot: 60, sweep: 200 },
+  { blob: 'top:-60px;right:-48px', arc: 'top:-30px;left:-34px', rot: -10, sweep: 230 },
+];
+function ScreenMotif({ pathname }: { pathname: string }) {
+  let h = 0;
+  for (const c of pathname.split('/')[1] ?? '') h = (h * 31 + c.charCodeAt(0)) >>> 0;
+  const m = MOTIFS[h % MOTIFS.length]!;
+  const css = (s: string) =>
+    Object.fromEntries(s.split(';').map((kv) => kv.split(':') as [string, string]));
+  const r = 48;
+  const rad = (deg: number) => (deg * Math.PI) / 180;
+  const x1 = 50 + r * Math.cos(rad(-90));
+  const y1 = 50 + r * Math.sin(rad(-90));
+  const x2 = 50 + r * Math.cos(rad(-90 + m.sweep));
+  const y2 = 50 + r * Math.sin(rad(-90 + m.sweep));
+  return (
+    <div className="ap-motif" aria-hidden="true">
+      <span className="ap-motif__blob" style={css(m.blob)} />
+      <svg className="ap-motif__arc" style={{ ...css(m.arc), transform: `rotate(${m.rot}deg)` }} viewBox="0 0 100 100">
+        <path
+          d={`M ${x1} ${y1} A ${r} ${r} 0 ${m.sweep > 180 ? 1 : 0} 1 ${x2} ${y2}`}
+          stroke="currentColor"
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          strokeDasharray="0.1 9"
+          fill="none"
+        />
+      </svg>
     </div>
   );
 }
