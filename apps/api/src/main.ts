@@ -15,6 +15,7 @@ import './instrument.js';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module.js';
 import { configureApp } from './configure-app.js';
+import { ensureStorageBuckets } from './storage/ensure-buckets.js';
 import { ensureBoxtalSubscriptions } from './shipping/boxtal-subscriptions.js';
 
 async function bootstrap(): Promise<void> {
@@ -22,5 +23,7 @@ async function bootstrap(): Promise<void> {
   await app.listen(process.env.PORT ?? 3000);
   // Boxtal label and tracking webhooks: created once if missing (shipping/boxtal-subscriptions.ts).
   void ensureBoxtalSubscriptions();
+  // Private Storage buckets: created once if missing (storage/ensure-buckets.ts).
+  void ensureStorageBuckets();
 }
 void bootstrap();
