@@ -10,6 +10,7 @@ import {
   type CreateDemandeInput,
   type DemandeDto,
   type MeResponse,
+  type RepairerProfileDto,
   type SignPhotoResponse,
 } from '@revime/shared';
 import { api, errorMessage } from '../../../lib/client/api';
@@ -72,6 +73,11 @@ function PublishForm() {
   const meRef = useRef(me);
   meRef.current = me;
   const categories = useApi<CategoryDto[]>('/categories');
+  // `?reparateur=<userId>`: the app's « Demander un devis » to one réparateur (a private demande,
+  // `POST /repairers/:id/quote-requests`), instead of a demande every réparateur of the area sees.
+  const repairerId = search.get('reparateur');
+  const target = useApi<RepairerProfileDto>(repairerId ? `/repairers/${repairerId}` : null);
+  const [preferredTravel, setPreferredTravel] = useState<'WORKSHOP' | 'HOME' | null>(null);
   const draftId = useMemo(() => crypto.randomUUID(), []);
 
   const [rootId, setRootId] = useState<string | null>(null);
@@ -162,8 +168,10 @@ function PublishForm() {
         await api.patch<MeResponse>('/users/me/modes', modeBody('CLIENT'));
         await refresh();
       }
-      const created = await api.post<DemandeDto>('/demandes', input);
-      router.replace(`/mes-demandes/${created.id}?publiee=1`);
+      const created = repairerId
+        ? await api.post<DemandeDto>(`/repairers/${repairerId}/quote-requests`, { ...input, ...(preferredTravel ? { preferredTravel } : {}) })
+        : await api.post<DemandeDto>('/demandes', input);
+      router.replace(`/mes-demandes/${created.id}?publiee=1${repairerId ? '&devis=1' : ''}`);
     } catch (e) {
       setError(e instanceof Error && e.message === 'upload' ? 'Une photo n’a pas pu être envoyée. Retirez-la et réessayez.' : errorMessage(e));
       setSending(false);
@@ -183,8 +191,22 @@ function PublishForm() {
   return (
     <div className="ap-page ap-pubpage">
       <div className="ap-publish__head">
-        <h1>Décrivez ce qu’il faut réparer</h1>
-        <p>3 questions, environ 2 minutes. Gratuit et sans engagement : les réparateurs de votre zone vous envoient leurs offres. On vous demandera de vous connecter seulement au moment de publier, sans rien perdre.</p>
+        {repairerId ? (
+          <>
+            <h1>Demander un devis{target.data ? ` à ${target.data.displayName}` : ''}</h1>
+            <p>3 questions, environ 2 minutes. Seul ce réparateur voit votre demande et vous répond avec son prix. Gratuit et sans engagement.</p>
+            <div className="ap-chips" role="radiogroup" aria-label="Où préférez-vous la réparation">
+              <button type="button" aria-pressed={preferredTravel === null} onClick={() => setPreferredTravel(null)}>Peu importe</button>
+              <button type="button" aria-pressed={preferredTravel === 'WORKSHOP'} onClick={() => setPreferredTravel('WORKSHOP')}>En atelier</button>
+              <button type="button" aria-pressed={preferredTravel === 'HOME'} onClick={() => setPreferredTravel('HOME')}>À domicile</button>
+            </div>
+          </>
+        ) : (
+          <>
+            <h1>Décrivez ce qu’il faut réparer</h1>
+            <p>3 questions, environ 2 minutes. Gratuit et sans engagement : les réparateurs de votre zone vous envoient leurs offres. On vous demandera de vous connecter seulement au moment de publier, sans rien perdre.</p>
+          </>
+        )}
       </div>
 
       <form className="ap-publish__grid" onSubmit={submit} noValidate>
@@ -383,7 +405,7 @@ function PublishForm() {
             </p>
           )}
           <button className="ap-btn ap-btn--primary ap-btn--block ap-publish__go" disabled={sending}>
-            {sending ? 'Publication…' : 'Publier ma demande'}
+            {sending ? 'Envoi…' : repairerId ? 'Envoyer ma demande de devis' : 'Publier ma demande'}
           </button>
           {status === 'out' && <p className="ap-hint ap-center-text">On vous demandera de vous connecter juste avant.</p>}
           {needsClientMode(me) && (

@@ -1,14 +1,20 @@
 import Link from 'next/link';
 import { repairStatus, type DemandeListItem, type RepairTone } from '@revime/shared';
 import { IconArrowLeft } from './icons';
+import { RevimeLoader } from './RevimeLoader';
 
-export function Loader() {
+/** Page and block loading: the app's animated REVIME logo. */
+export function Loader({ text }: { text?: string } = {}) {
+  return <RevimeLoader text={text} />;
+}
+
+/** Inside a list that fills in: the shape of what is coming. */
+export function Skeleton({ rows = 3 }: { rows?: number }) {
   return (
-    <div className="ap-skel" role="status" aria-live="polite">
-      <span />
-      <span />
-      <span />
-      <span className="ap-sr">Chargement…</span>
+    <div className="ap-skel" aria-hidden="true">
+      {Array.from({ length: rows }, (_, i) => (
+        <span key={i} />
+      ))}
     </div>
   );
 }

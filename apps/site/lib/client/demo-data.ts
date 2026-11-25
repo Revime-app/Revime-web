@@ -416,6 +416,19 @@ function demoPro(method: string, p: string, body: unknown): unknown {
     const cm = p.match(/^\/commandes\/([^/]+)$/);
     if (cm) return commandeDto(cm[1]!) ?? commandeDto('cmd-1');
     if (p === '/offers/mine') return proOffers;
+    if (p === '/notifications/unread-count') return { count: 2 };
+    if (p === '/notifications') {
+      const pro = me.profile.activeMode === 'REPAIRER';
+      return pro
+        ? [
+            { id: 'n1', mode: 'REPAIRER', type: 'OFFER_ACCEPTED', actorName: 'Sofia B.', subject: 'Batterie de MacBook Air', amountCents: 11900, step: null, messagePreview: null, demandeId: 'pub-1', commandeId: 'cmd-1', conversationId: null, read: false, createdAt: dAgo(1) },
+            { id: 'n2', mode: 'REPAIRER', type: 'FUNDS_RELEASED', actorName: 'Nadia K.', subject: 'Cafetière Nespresso', amountCents: 5280, step: null, messagePreview: null, demandeId: null, commandeId: 'cmd-3', conversationId: null, read: true, createdAt: dAgo(8) },
+          ]
+        : [
+            { id: 'n3', mode: 'CLIENT', type: 'OFFER_RECEIVED', actorName: 'Atelier Phone Lyon', subject: 'Écran iPhone 13 fissuré', amountCents: 8900, step: null, messagePreview: null, demandeId: 'demo-ecran', commandeId: null, conversationId: null, read: false, createdAt: dAgo(0.1) },
+            { id: 'n4', mode: 'CLIENT', type: 'MESSAGE_RECEIVED', actorName: 'Atelier Phone Lyon', subject: null, amountCents: null, step: null, messagePreview: 'Parfait. Je peux le faire en 1 jour…', demandeId: null, commandeId: null, conversationId: 'demo-conv-1', read: false, createdAt: dAgo(0.01) },
+          ];
+    }
     if (p === '/connect/status') return { status: 'ENABLED', entityType: 'individual', transfersActive: false, lastSyncedAt: null };
     if (p === '/repairers/me/quote-requests') return proQuotes;
     if (p === '/users/me/particular-quota') return { quota: null, offerBlockedMessage: null };
@@ -440,8 +453,10 @@ function demoPro(method: string, p: string, body: unknown): unknown {
     return commandeDto(rel[1]!);
   }
   if (/^\/commandes\/[^/]+\/review$/.test(p)) return { ok: true };
-  if (p === '/connect/onboarding') return { clientSecret: 'demo', publishableKey: 'demo', url: '/tableau-de-bord' };
+  if (p.startsWith('/connect/onboarding')) return { clientSecret: 'demo', publishableKey: 'demo', url: '/tableau-de-bord' };
   if (p === '/repairers/me/dashboard-seen') return { ok: true };
+  if (p.startsWith('/notifications')) return null;
+  if (/^\/repairers\/[^/]+\/quote-requests$/.test(p)) return { id: 'demo-ecran' };
   if (/^\/demandes\/[^/]+\/quote\//.test(p)) {
     proQuotes.length = 0;
     return { ok: true };

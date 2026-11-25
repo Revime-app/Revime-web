@@ -2,9 +2,38 @@ import Link from 'next/link';
 import { PUBLIC_DOCUMENTS, SUPPORT_EMAIL } from '../../lib/documents';
 
 /**
- * On every page of the site: every public document (the stores and Google need the privacy policy
- * and the account-deletion page one click away), and the support address.
+ * Compact, like the marketplaces it is modelled on (Leboncoin, Murfy): three short columns of
+ * site links, then every public document on one small line (the stores and Google need the
+ * privacy policy and the account-deletion page one click away), and the support address.
  */
+const COLUMNS = [
+  {
+    title: 'Faire réparer',
+    links: [
+      ['/publier', 'Publier une demande'],
+      ['/reparateurs', 'Trouver un réparateur'],
+      ['/reparation', 'Tout ce qu’on répare'],
+      ['/protection-revime', 'Protection REVIME'],
+    ],
+  },
+  {
+    title: 'Réparateurs',
+    links: [
+      ['/devenir-reparateur', 'Devenir réparateur'],
+      ['/demandes', 'Demandes en cours'],
+      ['/inscription?role=reparateur', 'Créer un compte réparateur'],
+    ],
+  },
+  {
+    title: 'REVIME',
+    links: [
+      ['/comment-ca-marche', 'Comment ça marche'],
+      ['/qui-sommes-nous', 'Qui sommes-nous'],
+      ['/aide', 'Aide et questions'],
+    ],
+  },
+] as const;
+
 export function SiteFooter() {
   return (
     <footer className="ap-footer">
@@ -15,28 +44,28 @@ export function SiteFooter() {
           <p>La réparation de tous vos objets, par des réparateurs vérifiés près de chez vous.</p>
           <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>
         </div>
-        <nav aria-label="REVIME" className="ap-footer__site">
-          <ul>
-            <li><Link href="/comment-ca-marche">Comment ça marche</Link></li>
-            <li><Link href="/protection-revime">Protection REVIME</Link></li>
-            <li><Link href="/reparation">Tout ce qu’on répare</Link></li>
-            <li><Link href="/reparateurs">Trouver un réparateur</Link></li>
-            <li><Link href="/devenir-reparateur">Devenir réparateur</Link></li>
-            <li><Link href="/qui-sommes-nous">Qui sommes-nous</Link></li>
-            <li><Link href="/aide">Aide et questions</Link></li>
-          </ul>
-        </nav>
-        <nav aria-label="Informations">
-          <ul>
-            {PUBLIC_DOCUMENTS.map((d) => (
-              <li key={d.slug}>
-                <Link href={`/${d.slug}`}>{d.label}</Link>
-              </li>
-            ))}
-            <li>
-              <Link href="/suppression-compte">Supprimer votre compte</Link>
-            </li>
-          </ul>
+        {COLUMNS.map((c) => (
+          <nav key={c.title} aria-label={c.title} className="ap-footer__col">
+            <p className="ap-footer__h">{c.title}</p>
+            <ul>
+              {c.links.map(([href, label]) => (
+                <li key={href}>
+                  <Link href={href}>{label}</Link>
+                </li>
+              ))}
+            </ul>
+          </nav>
+        ))}
+      </div>
+      <div className="ap-footer__legal">
+        <nav aria-label="Informations légales">
+          <span>© {new Date().getFullYear()} REVIME</span>
+          {PUBLIC_DOCUMENTS.map((d) => (
+            <Link key={d.slug} href={`/${d.slug}`}>
+              {d.label}
+            </Link>
+          ))}
+          <Link href="/suppression-compte">Supprimer votre compte</Link>
         </nav>
       </div>
     </footer>

@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { Spotlight } from './Spotlight';
+import { NotifBell } from './NotifBell';
 import { usePathname } from 'next/navigation';
 import { DEMO } from '../../lib/client/config';
 import { useSession } from '../../lib/client/session';
@@ -25,7 +26,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const loginHref = (to: string) => (signedIn ? to : `/connexion?suite=${encodeURIComponent(to)}`);
   const searching = isOn(pathname, '/reparateurs') || isOn(pathname, '/demandes');
   const pro = signedIn && me?.profile.activeMode === 'REPAIRER';
-  const inAccount = ['/profil', '/mes-demandes', '/offres-recues', '/favoris', '/parametres', '/mes-propositions', '/mes-missions', '/profil-pro', '/commandes'].some((h) => isOn(pathname, h));
+  const inAccount = ['/profil', '/mes-demandes', '/offres-recues', '/favoris', '/parametres', '/mes-propositions', '/mes-missions', '/profil-pro', '/commandes', '/notifications'].some((h) => isOn(pathname, h));
   /** The visitor's four doors: the same bar shape as the app, with what a visitor needs. */
   const visitorTabs = [
     { href: '/', label: 'Accueil', icon: IconHome, on: pathname === '/', cls: undefined },
@@ -65,6 +66,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             ))}
           </nav>
           <div className="ap-header__end">
+            <NotifBell />
             {status === 'out' && (
               <Link href={`/connexion?suite=${encodeURIComponent(pathname)}`} className="ap-login">
                 Se connecter

@@ -17,6 +17,7 @@ import {
 import { api, errorMessage } from '../../../../lib/client/api';
 import { useRequireSession } from '../../../../lib/client/session';
 import { useApi } from '../../../../lib/client/use-api';
+import { ProChecklist } from '../../../../components/app/ProChecklist';
 import { CountUp } from '../../../../components/app/CountUp';
 import { IconArrowRight, IconBriefcase, IconCompare, IconSearch, IconShieldCheck, IconUser } from '../../../../components/app/icons';
 import { Loader, ago, euroFmt } from '../../../../components/app/ui';
@@ -62,7 +63,7 @@ function Payouts() {
     setBusy(true);
     setError(null);
     try {
-      const r = await api.post<ConnectOnboardingResponse>('/connect/onboarding', {});
+      const r = await api.post<ConnectOnboardingResponse>('/connect/onboarding?surface=web', {});
       window.location.assign(r.url);
     } catch (e) {
       setError(errorMessage(e));
@@ -129,6 +130,8 @@ export default function DashboardPage() {
         <p className="ap-dash__hello">Bonjour {name}</p>
         <h1>Votre tableau de bord</h1>
       </header>
+
+      <ProChecklist me={me} />
 
       <div className="ap-kpis">
         <Link href="/mes-missions" className="ap-kpi ap-spot">

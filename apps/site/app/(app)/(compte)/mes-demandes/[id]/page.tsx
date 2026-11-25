@@ -171,7 +171,9 @@ function OfferCards({ offers, chosen, onChoose }: { offers: OfferDto[]; chosen: 
 
 function Detail({ id }: { id: string }) {
   const me = useRequireSession();
-  const published = useSearchParams().get('publiee') === '1';
+  const sp = useSearchParams();
+  const published = sp.get('publiee') === '1';
+  const privateQuote = sp.get('devis') === '1';
   const demande = useApi<DemandeDto>(me ? `/demandes/${id}` : null);
   const offers = useApi<OfferDto[]>(me ? `/demandes/${id}/offers` : null);
   const [sort, setSort] = useState<(typeof SORTS)[number]['key']>('prix');
@@ -204,11 +206,15 @@ function Detail({ id }: { id: string }) {
       {published && (
         <section className="ap-published" role="status" aria-labelledby="h-pub">
           <SuccessMark />
-          <h2 id="h-pub">Votre demande est publiée</h2>
+          <h2 id="h-pub">{privateQuote ? 'Votre demande de devis est envoyée' : 'Votre demande est publiée'}</h2>
           <p>Et maintenant ?</p>
           <ol>
             <li>
-              <strong>Les réparateurs proches sont prévenus.</strong> Ceux qui réparent ce type d’objet dans votre zone voient votre demande.
+              {privateQuote ? (
+                <><strong>Le réparateur est prévenu.</strong> Lui seul voit votre demande et vous répond avec son devis.</>
+              ) : (
+                <><strong>Les réparateurs proches sont prévenus.</strong> Ceux qui réparent ce type d’objet dans votre zone voient votre demande.</>
+              )}
             </li>
             <li>
               <strong>Vous recevez leurs offres</strong> par e-mail et dans l’appli, avec le prix, le délai et la garantie. Une offre reste valable 7 jours.

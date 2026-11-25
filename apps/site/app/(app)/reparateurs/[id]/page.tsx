@@ -67,7 +67,7 @@ export default function RepairerPage({ params }: { params: Promise<{ id: string 
             </span>
           </div>
           <div className="ap-profile__ctas">
-            <Link href="/publier" className="ap-btn ap-btn--primary ap-profile__cta">
+            <Link href={`/publier?reparateur=${id}`} className="ap-btn ap-btn--primary ap-profile__cta">
               Demander un devis
             </Link>
             <ContactButton repairerUserId={id} />

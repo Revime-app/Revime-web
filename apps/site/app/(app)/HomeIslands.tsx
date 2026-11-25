@@ -7,6 +7,7 @@ import type { DemandeListItem, DirectoryCardDto, PublicDemandeView } from '@revi
 import { nextStep } from '../../lib/client/next-step';
 import { useApi } from '../../lib/client/use-api';
 import { useSession } from '../../lib/client/session';
+import { Marquee } from '../../components/app/Marquee';
 import { DemandeTile, MyDemandeRow, RepairerCard } from '../../components/app/cards';
 import { IconPin, IconSearch } from '../../components/app/icons';
 
@@ -65,6 +66,9 @@ export function HomeHeroSearch() {
           </button>
         ))}
       </div>
+      <p className="ap-hero__or">
+        Pas envie de chercher ? <Link href="/publier">Décrivez votre panne</Link> : les réparateurs vous envoient leurs offres, gratuitement.
+      </p>
     </div>
   );
 }
@@ -182,16 +186,16 @@ export function TopRepairers() {
   return (
     <section className="ap-section" aria-labelledby="h-rep">
       <div className="ap-section__head">
-        <h2 id="h-rep">Réparateurs près de chez vous</h2>
+        <h2 id="h-rep">Ils réparent près de chez vous</h2>
         <Link href="/reparateurs" className="ap-more">
           Voir tout
         </Link>
       </div>
-      <div className="ap-rail ap-rail--rep">
+      <Marquee label="Réparateurs près de chez vous" seconds={Math.max(36, list.length * 7)}>
         {list.map((r) => (
           <RepairerCard key={r.userId} r={r} />
         ))}
-      </div>
+      </Marquee>
     </section>
   );
 }
@@ -203,16 +207,16 @@ export function RecentDemandes() {
   return (
     <section className="ap-section" aria-labelledby="h-dem">
       <div className="ap-section__head">
-        <h2 id="h-dem">Demandes près de chez vous</h2>
+        <h2 id="h-dem">Ce qu’on fait réparer en ce moment</h2>
         <Link href="/demandes" className="ap-more">
           Voir tout
         </Link>
       </div>
-      <div className="ap-rail">
+      <Marquee label="Demandes près de chez vous" reverse seconds={Math.max(40, list.length * 7)}>
         {list.map((d) => (
           <DemandeTile key={d.id} d={d} />
         ))}
-      </div>
+      </Marquee>
     </section>
   );
 }

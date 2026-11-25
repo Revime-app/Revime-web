@@ -81,9 +81,18 @@ export function RepairerDirectory() {
               </Link>
             </div>
           ) : (
-            <div className="ap-grid ap-grid--rep">
-              {list.data?.map((r) => <RepairerCard key={r.userId} r={r} />)}
-            </div>
+            <>
+              <div className="ap-grid ap-grid--rep">
+                {list.data?.map((r) => <RepairerCard key={r.userId} r={r} />)}
+              </div>
+              <aside className="ap-nudge">
+                <div>
+                  <strong>Vous hésitez entre plusieurs réparateurs ?</strong>
+                  <span>Décrivez votre panne une fois : ceux de votre zone vous envoient leur prix, et vous comparez.</span>
+                </div>
+                <Link href="/publier" className="ap-btn ap-btn--primary">Recevoir des offres</Link>
+              </aside>
+            </>
           )}
         </>
       )}
