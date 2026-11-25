@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { buildMetadata } from '../../../lib/seo';
+import { RecentDemandes } from '../HomeIslands';
 import { CtaBand, Crumbs, InfoHero, Steps } from '../../../components/app/info';
 
 export const metadata: Metadata = buildMetadata({
@@ -29,6 +30,7 @@ export default function DevenirReparateur() {
         </div>
         <p className="ap-hint">Gratuit. L’envoi d’offres et le suivi des revenus se font ensuite dans l’appli REVIME, avec le même compte.</p>
       </InfoHero>
+      <RecentDemandes title="Des clients attendent un réparateur en ce moment" cta="Voir toutes les demandes" />
       <section className="ap-section">
         <h2>Trois étapes pour vos premiers clients</h2>
         <Steps

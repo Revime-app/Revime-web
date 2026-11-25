@@ -200,16 +200,16 @@ export function TopRepairers() {
   );
 }
 
-export function RecentDemandes() {
+export function RecentDemandes({ title = 'Ce qu’on fait réparer en ce moment', cta = 'Voir tout' }: { title?: string; cta?: string } = {}) {
   const demandes = useApi<PublicDemandeView[]>('/demandes/browse');
   const list = (demandes.data ?? []).slice(0, 12);
   if (list.length === 0) return null;
   return (
     <section className="ap-section" aria-labelledby="h-dem">
       <div className="ap-section__head">
-        <h2 id="h-dem">Ce qu’on fait réparer en ce moment</h2>
+        <h2 id="h-dem">{title}</h2>
         <Link href="/demandes" className="ap-more">
-          Voir tout
+          {cta}
         </Link>
       </div>
       <Marquee label="Demandes près de chez vous" reverse seconds={Math.max(40, list.length * 7)}>
