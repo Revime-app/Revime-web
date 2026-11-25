@@ -755,7 +755,7 @@ export class DemandesService {
    * user - no réparateur mode. Its own select and mapper, so this surface cannot inherit a
    * field from `DemandeDto` or `FeedItem`.
    */
-  async browse(userId: string, query: BrowseQuery): Promise<PublicDemandeView[]> {
+  async browse(userId: string | null, query: BrowseQuery): Promise<PublicDemandeView[]> {
     const categoryFilter = query.categoryId
       ? { categoryId: { in: await this.categoryIdsFor(query.categoryId) } }
       : {};
@@ -764,7 +764,7 @@ export class DemandesService {
     const rows = await this.prisma.demande.findMany({
       where: {
         status: 'OPEN',
-        authorUserId: { not: userId },
+        ...(userId !== null ? { authorUserId: { not: userId } } : {}),
         // PUB-33 (DECP-23): only demandes from the viewer's side of the store-review seal.
         author: await viewerSideWhere(this.prisma, userId),
         ...PUBLIC_DEMANDE_WHERE,

@@ -16,7 +16,7 @@ import { USABLE_CATEGORY } from '../catalog/usable-category.js';
 import { GeocodeService } from '../geo/geocode.service.js';
 import { byDistanceKm, distanceKm, type Coords } from '../geo/haversine.js';
 import { PrismaService } from '../prisma/prisma.service.js';
-import { assertSameSide, viewerSideWhere } from '../review-accounts/review-account.js';
+import { assertSameSide, isReviewUser, viewerSideWhere } from '../review-accounts/review-account.js';
 import { repairerStats } from '../reviews/repairer-stats.js';
 import { isStorageConfigured, storageGateway } from '../storage/gateway.js';
 import { specialityMatchIds } from './speciality-match.js';
@@ -89,8 +89,10 @@ export function listableRepairerWhere(): Prisma.RepairerProfileWhereInput {
  * `userId: { not: caller }` and silently remove the self-exclusion - so those two wrap this
  * in `{ AND: [directoryWhere(...), { userId: ... }] }`.
  */
-export function directoryWhere(callerUserId: string): Prisma.RepairerProfileWhereInput {
-  return { ...listableRepairerWhere(), userId: { not: callerUserId } };
+export function directoryWhere(callerUserId: string | null): Prisma.RepairerProfileWhereInput {
+  return callerUserId === null
+    ? listableRepairerWhere()
+    : { ...listableRepairerWhere(), userId: { not: callerUserId } };
 }
 
 /**
@@ -275,7 +277,7 @@ export class RepairersService {
    * skipping `resolveNear` on some requests** - a miss must still be retried, which is exactly why
    * the cache stores successes only. Read `GeocodeService.cache` before changing either side.
    */
-  async list(callerUserId: string, query: DirectoryQuery): Promise<DirectoryCardDto[]> {
+  async list(callerUserId: string | null, query: DirectoryQuery): Promise<DirectoryCardDto[]> {
     // Resolved FIRST, so an unusable id is refused before a page is fetched, and only when a
     // filter is present -- the unfiltered path stays at three queries.
     const match = query.categoryId ? await this.resolveSpecialityMatch(query.categoryId) : null;
@@ -417,9 +419,13 @@ export class RepairersService {
    * query is profile-only and deliberately absent from `list`, which keeps the list at
    * three for a whole page.
    */
-  async getPublicProfile(userId: string, viewerUserId?: string): Promise<RepairerProfileDto> {
+  async getPublicProfile(userId: string, viewerUserId?: string | null): Promise<RepairerProfileDto> {
     // PUB-33 (DECP-23): across the store-review seal the profile does not exist (404).
-    if (viewerUserId !== undefined) await assertSameSide(this.prisma, viewerUserId, userId);
+    if (typeof viewerUserId === 'string') await assertSameSide(this.prisma, viewerUserId, userId);
+    // A signed-out visitor (website) is on the real side: a review account's fiche is a 404.
+    if (viewerUserId === null && (await isReviewUser(this.prisma, userId))) {
+      throw new AppException('NOT_FOUND', 'Ressource introuvable.');
+    }
     const row = await this.prisma.repairerProfile.findFirst({
       // 🛑 `listableRepairerWhere()` spread with the id, NOT a hand-written copy of its clauses.
       // This used to spell them out, and Stage 6 piece B2 found that a suspension added to

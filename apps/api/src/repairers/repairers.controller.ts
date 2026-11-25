@@ -1,5 +1,5 @@
 import { Controller, Get, Param, Post, Query } from '@nestjs/common';
-import { Session, type UserSession } from '@thallesp/nestjs-better-auth';
+import { Session, type UserSession, OptionalAuth } from '@thallesp/nestjs-better-auth';
 import {
   directoryQuerySchema,
   type DirectoryCardDto,
@@ -37,12 +37,14 @@ export class RepairersController {
     private readonly dashboardService: RepairerDashboardService,
   ) {}
 
+  /** 24/11/2026: open to signed-out visitors of the website, like the fiche below. */
   @Get('repairers')
+  @OptionalAuth()
   list(
-    @Session() session: UserSession,
+    @Session() session: UserSession | null,
     @Query(new ZodValidationPipe(directoryQuerySchema)) query: DirectoryQuery,
   ): Promise<DirectoryCardDto[]> {
-    return this.repairers.list(session.user.id, query);
+    return this.repairers.list(session?.user?.id ?? null, query);
   }
 
   /**
@@ -76,11 +78,13 @@ export class RepairersController {
    * there is nothing to derive from who is asking. The session guard still applies.
    */
   @Get('repairers/:userId')
+  @OptionalAuth()
   getOne(
-    @Session() session: UserSession,
+    @Session() session: UserSession | null,
     @Param('userId') userId: string,
   ): Promise<RepairerProfileDto> {
-    // PUB-33 (DECP-23): the viewer is passed for the store-review seal only.
-    return this.repairers.getPublicProfile(userId, session.user.id);
+    // PUB-33 (DECP-23): the viewer is passed for the store-review seal only. A signed-out
+    // visitor (website, 24/11/2026) sees the real side: a review account's fiche stays hidden.
+    return this.repairers.getPublicProfile(userId, session?.user?.id ?? null);
   }
 }

@@ -47,6 +47,13 @@ describe('directoryWhere is the listable predicate plus the self-exclusion', () 
     });
   });
 
+  it('has no caller to exclude for a signed-out visitor of the website', () => {
+    expect(directoryWhere(null)).toEqual({
+      deletedAt: null,
+      user: { profile: { repairerEnabled: true, deletedAt: null, repairerSuspendedAt: null } },
+    });
+  });
+
   it('still excludes the caller', () => {
     const w = directoryWhere('me') as { userId?: { not: string } };
     expect(w.userId).toEqual({ not: 'me' });
