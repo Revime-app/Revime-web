@@ -27,9 +27,9 @@ export default function HomePage() {
       <section className="ap-hero ap-hero--solo">
         <div className="ap-hero__text">
           <HomePersonal slot="greeting" />
-          <h1>
-            Une réparation ?<br />
-            Comparez, puis choisissez.
+          <h1 className="ap-hero__title">
+            <span className="ap-line"><span>Une réparation ?</span></span>
+            <span className="ap-line"><span>Comparez, puis choisissez.</span></span>
           </h1>
           <p className="ap-hero__lede">
             REVIME vous met en relation avec des réparateurs vérifiés près de chez vous. Vous comparez leurs offres, et le

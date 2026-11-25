@@ -7,6 +7,7 @@ import { protectionCentsFor, VERIFIED_BADGE_LABEL, type DemandeDto, type OfferDt
 import { useRequireSession } from '../../../../../lib/client/session';
 import { useApi } from '../../../../../lib/client/use-api';
 import { CategoryIcon, iconForLabel } from '../../../../../components/app/categories';
+import { SuccessMark } from '../../../../../components/app/SuccessMark';
 import { IconShieldCheck } from '../../../../../components/app/icons';
 import { Badge, Loader, MACRO_STEPS, Stars, demandeStatus, euroFmt, initials, macroStep } from '../../../../../components/app/ui';
 
@@ -202,6 +203,7 @@ function Detail({ id }: { id: string }) {
       </Link>
       {published && (
         <section className="ap-published" role="status" aria-labelledby="h-pub">
+          <SuccessMark />
           <h2 id="h-pub">Votre demande est publiée</h2>
           <p>Et maintenant ?</p>
           <ol>

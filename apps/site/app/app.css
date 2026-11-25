@@ -3986,3 +3986,364 @@ img.ap-avatar {
 .ap-inbox li {
   min-width: 0;
 }
+
+/* =====================================================================
+ * Motion. One orchestrated moment on the home (the headline rises line by
+ * line, then the lede and the search), the app's background shapes alive
+ * (the blob breathes, the dotted arc's dots travel), sections that settle
+ * in as they enter the screen, and answers to every touch (lift, press,
+ * check drawn). Everything stops for prefers-reduced-motion.
+ * ===================================================================== */
+.ap,
+.ap-auth {
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  /* --- Page change: the content settles in, the shell stays put --- */
+  .ap-main > :not(.ap-motif) {
+    animation: ap-page-in 0.5s var(--ease-out) backwards;
+  }
+  @keyframes ap-page-in {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+  }
+
+  /* --- Home hero: the one orchestrated moment --- */
+  .ap-hero__title .ap-line {
+    display: block;
+    overflow: hidden;
+    padding-bottom: 0.06em;
+  }
+  .ap-hero__title .ap-line > span {
+    display: inline-block;
+    animation: ap-line-up 0.9s var(--ease-out) both;
+  }
+  .ap-hero__title .ap-line:nth-child(2) > span {
+    animation-delay: 0.12s;
+  }
+  @keyframes ap-line-up {
+    from {
+      transform: translateY(105%);
+    }
+  }
+  .ap-hero__text > :not(h1) {
+    animation: ap-fade-up 0.8s var(--ease-out) both;
+  }
+  .ap-hero__text > :first-child:not(h1) {
+    animation-delay: 0s;
+  }
+  .ap-hero__text > .ap-hero__lede {
+    animation-delay: 0.3s;
+  }
+  .ap-hero__text > :last-child {
+    animation-delay: 0.42s;
+  }
+  @keyframes ap-fade-up {
+    from {
+      opacity: 0;
+      transform: translateY(14px);
+    }
+  }
+  .ap-home > .ap-herorow {
+    animation: ap-fade-up 0.9s 0.5s var(--ease-out) both;
+  }
+
+  /* --- The app's background shapes, alive --- */
+  .ap-motif__blob {
+    animation: ap-blob 18s ease-in-out infinite alternate;
+  }
+  @keyframes ap-blob {
+    0% {
+      border-radius: 46% 54% 58% 42% / 52% 44% 56% 48%;
+      translate: 0 0;
+      scale: 1;
+    }
+    50% {
+      border-radius: 58% 42% 44% 56% / 44% 58% 42% 56%;
+      translate: -14px 10px;
+      scale: 1.05;
+    }
+    100% {
+      border-radius: 42% 58% 52% 48% / 58% 46% 54% 42%;
+      translate: 10px -8px;
+      scale: 0.98;
+    }
+  }
+  .ap-motif__arc path {
+    animation: ap-dots 6s linear infinite;
+  }
+  @keyframes ap-dots {
+    to {
+      stroke-dashoffset: -36.4;
+    }
+  }
+  .ap-motif__arc {
+    animation: ap-arc-in 1.4s 0.2s var(--ease-out) both;
+  }
+  @keyframes ap-arc-in {
+    from {
+      opacity: 0;
+      scale: 0.85;
+    }
+  }
+
+  /* --- Sections settle in as they enter the screen (scroll-driven, no script) --- */
+  @supports (animation-timeline: view()) {
+    .ap-home > .ap-section,
+    .ap-home > .ap-trustbar,
+    .ap-home > .ap-promises,
+    .ap-home > .ap-proband,
+    .ap-section > .ap-igrid > *,
+    .ap-isteps > *,
+    .ap-ctaband,
+    .ap-faq > * {
+      animation: ap-rise linear both;
+      animation-timeline: view();
+      animation-range: entry 0% entry 55%;
+    }
+    @keyframes ap-rise {
+      from {
+        opacity: 0;
+        transform: translateY(28px);
+      }
+    }
+    /* The header gains its shadow once the page moves. */
+    .ap-header {
+      animation: ap-header-lift linear both;
+      animation-timeline: scroll(root);
+      animation-range: 0 80px;
+    }
+    @keyframes ap-header-lift {
+      to {
+        box-shadow: 0 8px 28px rgba(1, 5, 36, 0.08);
+        border-bottom-color: transparent;
+      }
+    }
+  }
+
+  /* --- Touch: lift, press, sheen --- */
+  .ap-btn {
+    position: relative;
+    overflow: hidden;
+    transition:
+      background-color 0.2s,
+      box-shadow 0.25s var(--ease-out),
+      transform 0.25s var(--ease-out);
+  }
+  .ap-btn:active:not(:disabled) {
+    transform: scale(0.97);
+    transition-duration: 0.08s;
+  }
+  .ap-btn--primary:not(:disabled):hover {
+    box-shadow: 0 10px 24px rgba(246, 27, 57, 0.28);
+    transform: translateY(-1px);
+  }
+  .ap-btn--pro:not(:disabled):hover {
+    box-shadow: 0 10px 24px rgba(37, 50, 79, 0.3);
+  }
+  .ap-btn--primary::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(105deg, transparent 35%, rgba(255, 255, 255, 0.28) 50%, transparent 65%);
+    transform: translateX(-120%);
+    pointer-events: none;
+  }
+  .ap-btn--primary:not(:disabled):hover::after {
+    transform: translateX(120%);
+    transition: transform 0.8s var(--ease-out);
+  }
+
+  .ap-rcard,
+  .ap-tile,
+  .ap-icard,
+  .ap-cat,
+  .ap-howcard,
+  .ap-promo,
+  .ap-inbox__row,
+  .ap-choice {
+    transition:
+      transform 0.35s var(--ease-out),
+      box-shadow 0.35s var(--ease-out),
+      border-color 0.2s,
+      background-color 0.2s;
+  }
+  .ap-rcard:hover,
+  .ap-tile:hover,
+  a.ap-icard:hover,
+  .ap-promo:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-hover);
+  }
+  .ap-cat:hover {
+    transform: translateY(-3px);
+  }
+  .ap-cat__icon {
+    transition: transform 0.45s var(--ease-spring), background-color 0.2s;
+  }
+  .ap-cat:hover .ap-cat__icon {
+    transform: scale(1.1) rotate(-6deg);
+  }
+  .ap-rcard__cover img,
+  .ap-promo__art {
+    transition: transform 0.9s var(--ease-out);
+  }
+  .ap-rcard:hover .ap-rcard__cover img,
+  .ap-promo:hover .ap-promo__art {
+    transform: scale(1.05);
+  }
+  .ap-promo__cta svg {
+    transition: transform 0.35s var(--ease-out);
+  }
+  .ap-promo:hover .ap-promo__cta svg,
+  .ap-more:hover svg {
+    transform: translateX(4px);
+  }
+  .ap-more svg {
+    transition: transform 0.35s var(--ease-out);
+  }
+  .ap-choice:active {
+    transform: scale(0.99);
+  }
+  .ap-choice input:checked {
+    animation: ap-pop 0.35s var(--ease-spring);
+  }
+
+  /* Search fields: a soft red ring when you start typing. */
+  .ap-bigsearch,
+  .ap-hsearch {
+    transition: box-shadow 0.3s var(--ease-out);
+  }
+  .ap-bigsearch:focus-within,
+  .ap-hsearch:focus-within {
+    box-shadow:
+      0 0 0 4px rgba(246, 27, 57, 0.12),
+      var(--shadow-hover);
+  }
+
+  /* Tab bar and FAB: the active tab pops, the + breathes once on arrival. */
+  .ap-tab[aria-current='page'] svg {
+    animation: ap-pop 0.45s var(--ease-spring);
+  }
+  @keyframes ap-pop {
+    0% {
+      transform: scale(0.7);
+    }
+    100% {
+      transform: scale(1);
+    }
+  }
+  .ap-fab {
+    transition: transform 0.3s var(--ease-spring);
+    animation: ap-fab-in 0.7s 0.3s var(--ease-spring) both;
+  }
+  .ap-fab:active {
+    transform: scale(0.92);
+  }
+  @keyframes ap-fab-in {
+    from {
+      transform: scale(0.4);
+      opacity: 0;
+    }
+  }
+  .ap-nav a {
+    transition: background-color 0.2s, color 0.2s;
+  }
+
+  /* Paybar and sheets slide in. */
+  .ap-paybar {
+    animation: ap-slide-up 0.45s var(--ease-out) both;
+  }
+  @keyframes ap-slide-up {
+    from {
+      transform: translateY(100%);
+    }
+  }
+  .ap-sheet {
+    animation: ap-fade 0.25s ease-out both;
+  }
+  .ap-sheet__panel {
+    animation: ap-slide-up 0.45s var(--ease-out) both;
+  }
+  @keyframes ap-fade {
+    from {
+      opacity: 0;
+    }
+  }
+
+  /* Messages arrive with a small pop, from their side. */
+  .ap-msg {
+    animation: ap-msg-in 0.35s var(--ease-out) both;
+    transform-origin: bottom left;
+  }
+  .ap-msg--mine {
+    transform-origin: bottom right;
+  }
+  @keyframes ap-msg-in {
+    from {
+      opacity: 0;
+      transform: translateY(8px) scale(0.96);
+    }
+  }
+  .ap-inbox__unread {
+    animation: ap-pop 0.5s var(--ease-spring);
+  }
+
+  /* Good news: the block rises, the check is drawn. */
+  .ap-published {
+    animation: ap-fade-up 0.6s var(--ease-out) both;
+  }
+  .ap-successmark__ring {
+    stroke-dasharray: 145;
+    stroke-dashoffset: 145;
+    animation: ap-draw 0.7s 0.15s var(--ease-out) forwards;
+  }
+  .ap-successmark__tick {
+    stroke-dasharray: 40;
+    stroke-dashoffset: 40;
+    animation: ap-draw 0.45s 0.7s var(--ease-out) forwards;
+  }
+  @keyframes ap-draw {
+    to {
+      stroke-dashoffset: 0;
+    }
+  }
+  .ap-successmark {
+    animation: ap-pop 0.6s 0.05s var(--ease-spring) both;
+  }
+
+  /* Status steps of a repair: the current step glows softly. */
+  [data-state='now'] {
+    animation: ap-glow 2.4s ease-in-out infinite;
+  }
+  @keyframes ap-glow {
+    50% {
+      filter: drop-shadow(0 0 6px rgba(246, 27, 57, 0.35));
+    }
+  }
+}
+
+.ap-successmark {
+  display: block;
+  margin-bottom: 10px;
+}
+.ap-successmark--green {
+  stroke: #067647;
+}
+.ap-successmark--red {
+  stroke: var(--red-deep);
+}
+@media (prefers-reduced-motion: reduce) {
+  .ap-successmark__ring,
+  .ap-successmark__tick {
+    stroke-dashoffset: 0;
+  }
+}

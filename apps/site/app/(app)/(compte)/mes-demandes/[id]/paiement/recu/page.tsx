@@ -8,6 +8,7 @@ import { api } from '../../../../../../../lib/client/api';
 import { DEMO } from '../../../../../../../lib/client/config';
 import { useRequireSession } from '../../../../../../../lib/client/session';
 import { IconShieldCheck } from '../../../../../../../components/app/icons';
+import { SuccessMark } from '../../../../../../../components/app/SuccessMark';
 import { Loader, euroFmt } from '../../../../../../../components/app/ui';
 
 /**
@@ -56,6 +57,7 @@ function Received({ id }: { id: string }) {
     return (
       <div className="ap-page ap-narrow">
         <div className="ap-published ap-published--warn">
+          <SuccessMark tone="red" />
           <h1>Le paiement n’a pas abouti</h1>
           <p>Aucun montant n’a été prélevé. Vous pouvez réessayer avec la même offre ou une autre carte.</p>
           <Link href={back} className="ap-btn ap-btn--primary">Retour aux offres</Link>
@@ -84,6 +86,7 @@ function Received({ id }: { id: string }) {
   return (
     <div className="ap-page ap-narrow">
       <div className="ap-published">
+        <SuccessMark />
         <h1>Paiement reçu</h1>
         <p>
           {commande ? `${euroFmt(commande.totalCents)} payés pour « ${commande.demandeTitle} ». ` : ''}
