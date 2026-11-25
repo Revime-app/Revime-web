@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { use } from 'react';
 import { VERIFIED_BADGE_LABEL, type RepairerProfileDto, type ReviewDto } from '@revime/shared';
+import { ContactButton } from '../../../../components/app/ContactButton';
 import { useApi } from '../../../../lib/client/use-api';
 import { IconPin, IconShieldCheck } from '../../../../components/app/icons';
 import { Loader, PageTitle, Stars, initials } from '../../../../components/app/ui';
@@ -65,9 +66,12 @@ export default function RepairerPage({ params }: { params: Promise<{ id: string 
               </span>
             </span>
           </div>
-          <Link href="/publier" className="ap-btn ap-btn--primary ap-profile__cta">
-            Demander un devis
-          </Link>
+          <div className="ap-profile__ctas">
+            <Link href="/publier" className="ap-btn ap-btn--primary ap-profile__cta">
+              Demander un devis
+            </Link>
+            <ContactButton repairerUserId={id} />
+          </div>
         </div>
       </section>
 

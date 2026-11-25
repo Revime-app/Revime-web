@@ -20,11 +20,14 @@ export default function DevenirReparateur() {
         lede="Recevez les demandes de votre quartier, envoyez votre prix, soyez payé à la validation du client."
       >
         <div className="ap-irow">
-          <Link href="/demandes" className="ap-btn ap-btn--primary ap-btn--pro">
+          <Link href="/inscription?role=reparateur" className="ap-btn ap-btn--primary ap-btn--pro">
+            Créer mon compte réparateur
+          </Link>
+          <Link href="/demandes" className="ap-btn ap-btn--secondary">
             Voir les demandes
           </Link>
         </div>
-        <p className="ap-hint">L’espace réparateur est dans l’appli REVIME pour l’instant, avec le même compte.</p>
+        <p className="ap-hint">Gratuit. L’envoi d’offres et le suivi des revenus se font ensuite dans l’appli REVIME, avec le même compte.</p>
       </InfoHero>
       <section className="ap-section">
         <h2>Trois étapes pour vos premiers clients</h2>
@@ -58,7 +61,7 @@ export default function DevenirReparateur() {
           </div>
         </div>
       </section>
-      <CtaBand tone="navy" title="Prêt à recevoir vos premières demandes ?" text="Téléchargez l’appli REVIME et activez le mode réparateur." cta="Voir les demandes" href="/demandes" />
+      <CtaBand tone="navy" title="Prêt à recevoir vos premières demandes ?" text="Créez votre compte en 2 minutes, puis envoyez vos offres depuis l’appli REVIME." cta="Créer mon compte réparateur" href="/inscription?role=reparateur" />
     </div>
   );
 }

@@ -1,4 +1,6 @@
 import type {
+  ConversationDto,
+  ConversationListItem,
   CategoryDto,
   DemandeDto,
   DemandeListItem,
@@ -334,6 +336,56 @@ const me = {
 
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+
+/* Messages: two conversations, the first one with an offer recap. */
+const minAgo = (min: number) => new Date(Date.now() - min * 60_000).toISOString();
+const threads: Record<string, ConversationDto> = {
+  'demo-conv-1': {
+    id: 'demo-conv-1',
+    demandeId: 'demo-ecran',
+    counterpartName: 'Atelier Phone Lyon',
+    counterpartUserId: 'demo-rep-2',
+    counterpartIsRepairer: true,
+    subject: 'Écran iPhone 13 fissuré',
+    offerRecap: null,
+    messages: [
+      { id: 'm1', body: 'Bonjour, votre écran est-il encore tactile malgré la fissure ?', kind: 'USER', mine: false, createdAt: minAgo(95) },
+      { id: 'm2', body: 'Oui, il fonctionne, mais la fissure descend jusqu’en bas.', kind: 'USER', mine: true, createdAt: minAgo(80) },
+      { id: 'm3', body: 'Parfait. Je peux le faire en 1 jour avec une pièce d’origine. Passez quand vous voulez à l’atelier.', kind: 'USER', mine: false, createdAt: minAgo(12) },
+    ],
+    blocked: { active: false, byMe: false },
+  } as unknown as ConversationDto,
+  'demo-conv-2': {
+    id: 'demo-conv-2',
+    demandeId: null,
+    counterpartName: 'Karim R.',
+    counterpartUserId: 'demo-rep-1',
+    counterpartIsRepairer: true,
+    subject: 'Question sur une trottinette',
+    offerRecap: null,
+    messages: [
+      { id: 'n1', body: 'Bonjour, réparez-vous les freins de trottinette Xiaomi ?', kind: 'USER', mine: true, createdAt: minAgo(60 * 26) },
+      { id: 'n2', body: 'Oui, publiez une demande et je vous fais une offre.', kind: 'USER', mine: false, createdAt: minAgo(60 * 25) },
+    ],
+    blocked: { active: false, byMe: false },
+  } as unknown as ConversationDto,
+};
+const inbox = (): ConversationListItem[] =>
+  Object.values(threads).map((t) => {
+    const last = t.messages[t.messages.length - 1]!;
+    return {
+      id: t.id,
+      demandeId: t.demandeId,
+      counterpartName: t.counterpartName,
+      subject: t.subject,
+      preview: last.body,
+      lastMessageAt: last.createdAt,
+      unread: t.id === 'demo-conv-1' ? 1 : 0,
+      avatarUrl: null,
+      userRole: 'CLIENT',
+    } as ConversationListItem;
+  });
+
 export async function demoGet<T>(path: string): Promise<T> {
   await wait(150);
   const p = path.split('?')[0]!;
@@ -352,6 +404,9 @@ export async function demoGet<T>(path: string): Promise<T> {
       createdAt: o.createdAt,
     })) as T;
   }
+  if (p === '/conversations') return inbox() as T;
+  const conv = p.match(/^\/conversations\/([^/]+)$/);
+  if (conv && threads[conv[1]!]) return threads[conv[1]!] as T;
   if (p === '/favorites/repairers') return repairers.slice(2, 4) as T;
   if (p === '/favorites/demandes') {
     return browse.slice(4, 6).map((d) => ({
@@ -433,6 +488,14 @@ export async function demoPost<T>(path: string, body: unknown): Promise<T> {
     demandes.unshift(created);
     return detail(created.id) as T;
   }
+  const msg = path.match(/^\/conversations\/([^/]+)\/messages$/);
+  if (msg && threads[msg[1]!]) {
+    const m = { id: `m${Date.now()}`, body: (body as { body: string }).body, kind: 'USER', mine: true, createdAt: new Date().toISOString() };
+    threads[msg[1]!] = { ...threads[msg[1]!]!, messages: [...threads[msg[1]!]!.messages, m as never] };
+    return m as T;
+  }
+  if (path === '/conversations') return { id: 'demo-conv-1' } as T;
+  if (/^\/conversations\/[^/]+\/read$/.test(path)) return null as T;
   if (/^\/offers\/[^/]+\/checkout$/.test(path)) {
     return { paymentIntentClientSecret: 'demo', commandeId: '00000000-0000-4000-8000-000000000001', isTestMode: true } as T;
   }

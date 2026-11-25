@@ -15,6 +15,8 @@ export const PRIVATE_PATHS = [
   '/connexion',
   '/inscription',
   '/mot-de-passe-oublie',
+  '/nouveau-mot-de-passe',
+  '/verification',
   '/messages',
   '/notifications',
   '/favoris',

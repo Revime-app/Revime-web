@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useState } from 'react';
 import { authClient } from '../../lib/client/auth';
 import { DEMO, setDemoSignedIn } from '../../lib/client/config';
@@ -121,8 +122,10 @@ export function LoginForm({ onDone }: { onDone: () => void }) {
               : 'Recevoir un code'}
       </button>
       <p className="ap-hint">
-        Pas encore de compte ? La création de compte arrive très bientôt sur le site. En attendant, elle se fait dans
-        l’appli REVIME, avec les mêmes identifiants.
+        <Link href="/mot-de-passe-oublie">Mot de passe oublié ?</Link>
+      </p>
+      <p className="ap-hint">
+        Pas encore de compte ? <Link href="/inscription">Créer un compte</Link>
       </p>
     </form>
   );

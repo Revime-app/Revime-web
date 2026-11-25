@@ -38,7 +38,7 @@ export default function ParametresPage() {
           <dd>{me.phone ?? 'Non renseigné'}</dd>
         </div>
       </dl>
-      <p className="ap-hint">Le mot de passe, la sécurité et les notifications se modifient dans l’appli pour l’instant.</p>
+      <p className="ap-hint">Mot de passe oublié ? <Link href="/mot-de-passe-oublie">Recevoir un lien</Link>. La sécurité et les notifications se modifient dans l’appli.</p>
 
       <h2 className="ap-eyebrow-h">Mode</h2>
       <ModeSwitch />

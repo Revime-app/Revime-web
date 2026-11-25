@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { HOME_PATH } from '../../lib/client/config';
+import { SocialButtons } from '../../components/app/SocialButtons';
 import { LoginForm } from '../../components/app/LoginForm';
 import { IconShieldCheck } from '../../components/app/icons';
 
@@ -24,6 +25,7 @@ function SignIn() {
         </Link>
         <h1>Connexion</h1>
         <p className="ap-muted">Le même compte que dans l’appli REVIME.</p>
+        <SocialButtons next={next} />
         <LoginForm onDone={() => router.replace(next)} />
       </main>
       <aside className="ap-auth__side" aria-hidden="true">
