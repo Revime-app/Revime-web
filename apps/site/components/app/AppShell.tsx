@@ -1,96 +1,15 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
+import { usePathname } from 'next/navigation';
 import { DEMO } from '../../lib/client/config';
 import { useSession } from '../../lib/client/session';
-import { IconHome, IconMessage, IconPlus, IconSearch, IconUser } from './icons';
+import { IconBriefcase, IconHelp, IconHome, IconMessage, IconPlus, IconSearch, IconUser } from './icons';
 import { SiteFooter } from './SiteFooter';
-import { initials } from './ui';
 
 function isOn(pathname: string, href: string) {
   if (href === '/') return pathname === '/';
   return pathname === href || pathname.startsWith(`${href}/`);
-}
-
-/** The header search: one field, straight to the réparateurs who fix that. */
-function HeaderSearch() {
-  const router = useRouter();
-  const [q, setQ] = useState('');
-  return (
-    <form
-      role="search"
-      className="ap-hsearch"
-      onSubmit={(e) => {
-        e.preventDefault();
-        router.push(q.trim() ? `/reparateurs?q=${encodeURIComponent(q.trim())}` : '/reparateurs');
-      }}
-    >
-      <IconSearch size={18} />
-      <input
-        aria-label="Rechercher un réparateur"
-        placeholder="Que faut-il réparer ?"
-        value={q}
-        onChange={(e) => setQ(e.target.value)}
-      />
-    </form>
-  );
-}
-
-function AccountMenu() {
-  const { me, signOut } = useSession();
-  const router = useRouter();
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!open) return;
-    const close = (e: MouseEvent) => !ref.current?.contains(e.target as Node) && setOpen(false);
-    document.addEventListener('click', close);
-    return () => document.removeEventListener('click', close);
-  }, [open]);
-  if (!me) return null;
-  const name = me.firstName?.trim() || me.username;
-  return (
-    <div className="ap-menu" ref={ref}>
-      <button
-        className="ap-avatar"
-        aria-haspopup="menu"
-        aria-expanded={open}
-        aria-label={`Compte de ${name}`}
-        onClick={() => setOpen((o) => !o)}
-      >
-        {initials(name)}
-      </button>
-      {open && (
-        <div className="ap-menu__panel" role="menu">
-          <p className="ap-menu__who">
-            <strong>{name}</strong>
-            <span>{me.email}</span>
-          </p>
-          <Link role="menuitem" href="/mes-demandes" onClick={() => setOpen(false)}>
-            Mes réparations
-          </Link>
-          <Link role="menuitem" href="/messages" onClick={() => setOpen(false)}>
-            Messages
-          </Link>
-          <Link role="menuitem" href="/profil" onClick={() => setOpen(false)}>
-            Profil
-          </Link>
-          <button
-            role="menuitem"
-            onClick={async () => {
-              setOpen(false);
-              await signOut();
-              router.push('/');
-            }}
-          >
-            Se déconnecter
-          </button>
-        </div>
-      )}
-    </div>
-  );
 }
 
 /**
@@ -100,10 +19,26 @@ function AccountMenu() {
  */
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { status } = useSession();
+  const { status, me } = useSession();
   const signedIn = status === 'in';
   const loginHref = (to: string) => (signedIn ? to : `/connexion?suite=${encodeURIComponent(to)}`);
   const searching = isOn(pathname, '/reparateurs') || isOn(pathname, '/demandes');
+  const pro = signedIn && me?.profile.activeMode === 'REPAIRER';
+  const inAccount = ['/profil', '/mes-demandes', '/offres-recues', '/favoris', '/parametres'].some((h) => isOn(pathname, h));
+  /** The visitor's four doors: the same bar shape as the app, with what a visitor needs. */
+  const visitorTabs = [
+    { href: '/', label: 'Accueil', icon: IconHome, on: pathname === '/', cls: undefined },
+    { href: '/reparateurs', label: 'Trouver un réparateur', icon: IconSearch, on: searching, cls: undefined },
+    { href: '/comment-ca-marche', label: 'Comment ça marche', icon: IconHelp, on: isOn(pathname, '/comment-ca-marche'), cls: undefined },
+    { href: '/devenir-reparateur', label: 'Devenir réparateur', icon: IconBriefcase, on: isOn(pathname, '/devenir-reparateur'), cls: 'is-pro' },
+  ];
+  /** Signed in: the app's tab bar, word for word (Accueil, Recherche, Messages, Profil). */
+  const memberTabs = [
+    { href: '/', label: 'Accueil', icon: IconHome, on: pathname === '/', cls: undefined },
+    { href: pro ? '/demandes' : '/reparateurs', label: 'Recherche', icon: IconSearch, on: searching, cls: undefined },
+    { href: '/messages', label: 'Messages', icon: IconMessage, on: isOn(pathname, '/messages'), cls: undefined },
+    { href: '/profil', label: 'Profil', icon: IconUser, on: inAccount, cls: undefined },
+  ];
 
   return (
     <div className="ap">
@@ -117,25 +52,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <Link href="/" className="ap-logo" aria-label="REVIME, accueil">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/brand/revime-logo.png" alt="REVIME" width={124} height={22} />
+            {signedIn && <span className={pro ? 'ap-modebadge ap-modebadge--pro' : 'ap-modebadge'}>{pro ? 'Réparateur' : 'Client'}</span>}
           </Link>
-          <HeaderSearch />
-          <nav className="ap-nav" aria-label="Principale">
-            <Link href="/demandes" aria-current={isOn(pathname, '/demandes') ? 'page' : undefined}>
-              Demandes
-            </Link>
-            <Link href="/reparateurs" aria-current={isOn(pathname, '/reparateurs') ? 'page' : undefined}>
-              Réparateurs
-            </Link>
-            {signedIn && (
-              <>
-                <Link href="/mes-demandes" aria-current={isOn(pathname, '/mes-demandes') ? 'page' : undefined}>
-                  Mes réparations
-                </Link>
-                <Link href="/messages" aria-current={isOn(pathname, '/messages') ? 'page' : undefined}>
-                  Messages
-                </Link>
-              </>
-            )}
+          <nav className={pro ? 'ap-nav ap-nav--pro' : 'ap-nav'} aria-label="Principale">
+            {(signedIn ? memberTabs : visitorTabs).map(({ href, label, icon: Icon, on, cls }) => (
+              <Link key={label} href={href} className={cls} aria-current={on ? 'page' : undefined}>
+                <Icon size={19} /> {label}
+              </Link>
+            ))}
           </nav>
           <div className="ap-header__end">
             {status === 'out' && (
@@ -143,10 +67,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 Se connecter
               </Link>
             )}
-            {signedIn && <AccountMenu />}
-            <Link href="/publier" className="ap-btn ap-btn--primary ap-publish">
-              <IconPlus size={18} strokeWidth={2.6} /> Publier une demande
-            </Link>
+            {pro ? (
+              <Link href="/demandes" className="ap-btn ap-btn--primary ap-btn--pro ap-publish">
+                <IconBriefcase size={18} /> Voir les demandes
+              </Link>
+            ) : (
+              <Link href="/publier" className="ap-btn ap-btn--primary ap-publish">
+                <IconPlus size={18} strokeWidth={2.6} /> Publier une demande
+              </Link>
+            )}
           </div>
         </div>
       </header>
@@ -167,9 +96,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <IconSearch size={22} />
           <span>Recherche</span>
         </Link>
-        <Link href="/publier" className="ap-fab" aria-label="Publier une demande">
-          <IconPlus size={28} strokeWidth={2.6} />
-        </Link>
+        {pro ? (
+          <Link href="/demandes" className="ap-fab ap-fab--pro" aria-label="Voir les demandes">
+            <IconBriefcase size={26} />
+          </Link>
+        ) : (
+          <Link href="/publier" className="ap-fab" aria-label="Publier une demande">
+            <IconPlus size={28} strokeWidth={2.6} />
+          </Link>
+        )}
         <Link href={loginHref('/messages')} className="ap-tab" aria-current={isOn(pathname, '/messages') ? 'page' : undefined}>
           <IconMessage size={22} />
           <span>Messages</span>
@@ -177,7 +112,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <Link
           href={loginHref('/profil')}
           className="ap-tab"
-          aria-current={isOn(pathname, '/profil') || isOn(pathname, '/mes-demandes') ? 'page' : undefined}
+          aria-current={inAccount ? 'page' : undefined}
         >
           <IconUser size={22} />
           <span>Profil</span>

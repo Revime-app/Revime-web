@@ -2818,3 +2818,45 @@ body {
 .ap-mode + .ap-hint {
   margin-top: 10px;
 }
+/* Header, as the app's tab bar: icons, mode badge, the mode's colour. */
+.ap-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.ap-modebadge {
+  border: 1.5px solid var(--red);
+  color: var(--red);
+  font-weight: 700;
+  font-size: 12.5px;
+  padding: 2px 9px;
+  border-radius: 999px;
+}
+.ap-modebadge--pro {
+  border-color: var(--navy);
+  color: var(--navy);
+}
+@media (min-width: 960px) {
+  .ap-nav a {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 15px;
+    color: var(--ink2);
+  }
+  .ap-nav a.is-pro {
+    color: var(--navy);
+  }
+  .ap-nav--pro a[aria-current='page'],
+  .ap-nav a.is-pro[aria-current='page'] {
+    color: var(--navy);
+    background: var(--navy-soft, #f0f1f5);
+  }
+}
+.ap-btn--pro {
+  background: var(--navy) !important;
+}
+.ap-fab--pro {
+  background: var(--navy);
+  box-shadow: 0 8px 20px rgba(37, 50, 79, 0.35);
+}

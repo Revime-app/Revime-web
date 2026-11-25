@@ -181,3 +181,15 @@ export const IconBadgeCheck = (p: P) => (
     <path d="m9 12 2 2 4-4" />
   </Svg>
 );
+export const IconHelp = (p: P) => (
+  <Svg {...p}>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6M12 17h.01" />
+  </Svg>
+);
+export const IconBriefcase = (p: P) => (
+  <Svg {...p}>
+    <rect x="3" y="7" width="18" height="13" rx="2" />
+    <path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M3 13h18" />
+  </Svg>
+);
