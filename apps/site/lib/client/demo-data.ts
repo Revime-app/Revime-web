@@ -93,6 +93,19 @@ const demandes: DemandeListItem[] = [
     isPrivate: false,
     createdAt: ago(40),
   },
+  {
+    id: 'demo-veste',
+    title: 'Fermeture éclair de veste à changer',
+    status: 'OPEN',
+    commande: null,
+    categoryLabelFr: 'Vêtements',
+    locationLabel: 'Lyon 1er',
+    offerCount: 0,
+    photoUrl: null,
+    quoteRequest: null,
+    isPrivate: true,
+    createdAt: ago(2),
+  },
 ];
 
 const offers: OfferDto[] = [
@@ -313,6 +326,9 @@ const me = {
   firstName: 'Léa',
   lastName: 'Martin',
   username: 'lea.m',
+  phone: '06 12 34 56 78',
+  emailVerified: true,
+  phoneVerified: true,
   profile: { activeMode: 'CLIENT' },
 };
 
@@ -324,6 +340,37 @@ export async function demoGet<T>(path: string): Promise<T> {
   if (p === '/users/me') return me as T;
   if (p === '/categories') return DEMO_CATEGORIES as T;
   if (p === '/demandes/mine') return demandes as T;
+  if (p === '/offers/received') {
+    return offers.map((o) => ({
+      id: o.id,
+      demandeId: 'demo-ecran',
+      demandeTitle: 'Écran iPhone 13 fissuré',
+      repairerName: o.repairerName,
+      priceCents: o.priceCents,
+      delayHours: o.delayHours,
+      status: 'SENT',
+      createdAt: o.createdAt,
+    })) as T;
+  }
+  if (p === '/favorites/repairers') return repairers.slice(2, 4) as T;
+  if (p === '/favorites/demandes') {
+    return browse.slice(4, 6).map((d) => ({
+      id: d.id,
+      title: d.title,
+      categoryLabelFr: d.category.labelFr,
+      locationLabel: d.locationLabel,
+      brand: null,
+      model: null,
+      mode: d.budgetCents === null ? 'OFFERS' : 'BUDGET',
+      budgetCents: d.budgetCents,
+      distanceKm: null,
+      offerCount: 0,
+      hasMyOffer: false,
+      photoUrl: d.photos?.[0] ?? null,
+      createdAt: d.createdAt,
+      status: 'OPEN',
+    })) as T;
+  }
   const q = new URLSearchParams(path.split('?')[1] ?? '');
   const inCategory = (categoryId: string | null, label: string) => {
     if (!categoryId) return true;

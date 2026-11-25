@@ -18,6 +18,8 @@ export const PRIVATE_PATHS = [
   '/messages',
   '/notifications',
   '/favoris',
+  '/offres-recues',
+  '/parametres',
   '/publier',
   '/mes-demandes',
   '/commandes',

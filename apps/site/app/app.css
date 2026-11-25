@@ -2455,3 +2455,342 @@ html,
 body {
   overflow-x: clip;
 }
+
+/* ---------- Mon espace (the app's Profil tab, as a website) ---------- */
+.ap-account {
+  display: block;
+}
+.ap-acnav {
+  display: none;
+}
+@media (min-width: 960px) {
+  .ap-account {
+    display: grid;
+    grid-template-columns: 260px minmax(0, 1fr);
+    gap: 32px;
+    align-items: start;
+  }
+  .ap-acnav {
+    position: sticky;
+    top: 92px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 14px;
+    border-radius: var(--r-card);
+    background: var(--white);
+    box-shadow: var(--shadow);
+  }
+  .ap-account .ap-only-mobile {
+    display: none;
+  }
+}
+.ap-acnav__me {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 8px 14px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid var(--line);
+  color: var(--ink);
+}
+.ap-acnav__me strong {
+  display: block;
+  font-size: 15px;
+}
+.ap-acnav__me span span {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--red);
+}
+.ap-acnav__av,
+.ap-offrow__av {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: var(--red-soft);
+  color: var(--red-deep);
+  font-weight: 700;
+}
+.ap-acnav nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.ap-acnav nav a,
+.ap-acnav__out {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px;
+  border: 0;
+  border-radius: 12px;
+  background: none;
+  font: inherit;
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--ink2);
+  cursor: pointer;
+  text-align: left;
+}
+.ap-acnav nav a:hover,
+.ap-acnav__out:hover {
+  background: var(--mist);
+}
+.ap-acnav nav a[aria-current='page'] {
+  background: var(--red-soft);
+  color: var(--ink);
+}
+.ap-acnav__ic {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: var(--red-soft);
+  color: var(--red);
+}
+.ap-acnav nav a[aria-current='page'] .ap-acnav__ic {
+  background: var(--red);
+  color: var(--white);
+}
+.ap-acnav__out {
+  margin-top: 6px;
+  border-top: 1px solid var(--line);
+  border-radius: 0 0 12px 12px;
+  padding-top: 14px;
+  color: var(--muted);
+}
+
+.ap-idcard {
+  padding: 22px;
+  border-radius: 24px;
+  background: var(--red);
+  color: var(--white);
+}
+.ap-idcard__top {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.ap-idcard__top > div {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-width: 0;
+}
+.ap-idcard__top strong {
+  font-size: 24px;
+  line-height: 1.15;
+}
+.ap-idcard__top span {
+  opacity: 0.92;
+  overflow-wrap: anywhere;
+}
+.ap-idcard__av {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 68px;
+  height: 68px;
+  border-radius: 18px;
+  background: var(--red-soft);
+  color: var(--red);
+  font-size: 24px;
+  font-weight: 700;
+}
+.ap-idcard__role {
+  margin-top: 6px;
+  padding: 3px 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.2);
+  font-size: 13px;
+  font-weight: 700;
+  opacity: 1 !important;
+}
+.ap-idcard__stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  margin: 20px 0 0;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.12);
+}
+.ap-idcard__stats > div {
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: center;
+  padding: 12px;
+}
+.ap-idcard__stats > div + div {
+  border-left: 1px solid rgba(255, 255, 255, 0.25);
+}
+.ap-idcard__stats dd {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 700;
+}
+.ap-idcard__stats dt {
+  font-size: 13px;
+  opacity: 0.9;
+}
+.ap-checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 16px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.ap-checks li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: 999px;
+  background: var(--green-soft);
+  color: var(--green);
+  font-size: 14px;
+  font-weight: 600;
+}
+.ap-eyebrow-h {
+  margin: 28px 0 12px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1.6px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.ap-shortcuts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+@media (min-width: 720px) {
+  .ap-shortcuts {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+.ap-shortcuts a {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 16px;
+  border-radius: var(--r-card);
+  border: 1.5px solid var(--line);
+  background: var(--white);
+  color: var(--ink);
+}
+.ap-shortcuts a:hover {
+  border-color: var(--ink);
+}
+.ap-shortcuts__ic {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  margin-bottom: 12px;
+  border-radius: 14px;
+  background: var(--red-soft);
+  color: var(--red);
+}
+.ap-shortcuts__chev {
+  position: absolute;
+  top: 28px;
+  right: 16px;
+  color: var(--faint);
+}
+.ap-shortcuts strong {
+  font-size: 16px;
+}
+.ap-shortcuts span:last-child {
+  font-size: 13.5px;
+  color: var(--muted);
+}
+.ap-kv {
+  margin: 0;
+  padding: 4px 18px;
+}
+.ap-kv > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 13px 0;
+}
+.ap-kv > div + div {
+  border-top: 1px solid var(--line);
+}
+.ap-kv dt {
+  color: var(--muted);
+}
+.ap-kv dd {
+  margin: 0;
+  font-weight: 600;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+.ap-only-mobile {
+  width: 100%;
+  margin-top: 24px;
+}
+.ap-offrow {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px;
+  border-radius: var(--r-card);
+  background: var(--white);
+  box-shadow: var(--shadow);
+  color: var(--ink);
+}
+.ap-offrow:hover {
+  box-shadow: var(--shadow-hover);
+}
+.ap-offrow__thumb {
+  flex: 0 0 auto;
+  width: 54px;
+  height: 54px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--mist);
+}
+.ap-offrow__thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.ap-offrow__body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+.ap-offrow__body strong {
+  font-size: 16px;
+}
+.ap-offrow__body span {
+  color: var(--muted);
+  font-size: 14px;
+}
+.ap-offrow__price {
+  font-size: 18px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.ap-offrow__chev {
+  color: var(--faint);
+}
+@media (min-width: 960px) {
+  .ap-account .ap-only-phone {
+    display: none;
+  }
+}
+.ap-stack + .ap-hint {
+  margin-top: 14px;
+}

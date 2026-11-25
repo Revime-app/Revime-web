@@ -69,7 +69,7 @@ function AccountMenu() {
             <span>{me.email}</span>
           </p>
           <Link role="menuitem" href="/mes-demandes" onClick={() => setOpen(false)}>
-            Mes demandes
+            Mes réparations
           </Link>
           <Link role="menuitem" href="/messages" onClick={() => setOpen(false)}>
             Messages
@@ -129,7 +129,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             {signedIn && (
               <>
                 <Link href="/mes-demandes" aria-current={isOn(pathname, '/mes-demandes') ? 'page' : undefined}>
-                  Mes demandes
+                  Mes réparations
                 </Link>
                 <Link href="/messages" aria-current={isOn(pathname, '/messages') ? 'page' : undefined}>
                   Messages

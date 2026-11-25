@@ -4,11 +4,11 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { Suspense, use, useState } from 'react';
 import { protectionCentsFor, VERIFIED_BADGE_LABEL, type DemandeDto, type OfferDto } from '@revime/shared';
-import { useRequireSession } from '../../../../lib/client/session';
-import { useApi } from '../../../../lib/client/use-api';
-import { CategoryIcon, iconForLabel } from '../../../../components/app/categories';
-import { IconClose, IconShieldCheck } from '../../../../components/app/icons';
-import { Badge, Loader, MACRO_STEPS, Stars, demandeStatus, euroFmt, initials, macroStep } from '../../../../components/app/ui';
+import { useRequireSession } from '../../../../../lib/client/session';
+import { useApi } from '../../../../../lib/client/use-api';
+import { CategoryIcon, iconForLabel } from '../../../../../components/app/categories';
+import { IconClose, IconShieldCheck } from '../../../../../components/app/icons';
+import { Badge, Loader, MACRO_STEPS, Stars, demandeStatus, euroFmt, initials, macroStep } from '../../../../../components/app/ui';
 
 const PARTS: Record<string, string> = {
   UNKNOWN: 'Je ne sais pas',
@@ -173,7 +173,7 @@ function Detail({ id }: { id: string }) {
     return (
       <div className="ap-page ap-narrow">
         <Link href="/mes-demandes" className="ap-crumb">
-          ‹ Mes demandes
+          ‹ Mes réparations
         </Link>
         <p className="ap-error">{demande.error ?? 'Demande introuvable.'}</p>
       </div>
@@ -190,7 +190,7 @@ function Detail({ id }: { id: string }) {
   return (
     <div className={chosen ? 'ap-page ap-detail has-bar' : 'ap-page ap-detail'}>
       <Link href="/mes-demandes" className="ap-crumb">
-        ‹ Mes demandes
+        ‹ Mes réparations
       </Link>
       {published && (
         <p className="ap-success" role="status">
