@@ -264,7 +264,7 @@ services:
         sync: false
       # The website's addresses, trusted by Better Auth and used for its return links.
       - key: SITE_ORIGIN
-        value: https://revime.fr,https://www.revime.fr
+        value: https://revime-site-ookw.onrender.com,https://revime.fr,https://www.revime.fr
       # ═══════════════════════════════════════════════════════════════════════════
       # LIVRAISON BOXTAL (spec docs/superpowers/specs/2026-09-04-livraison-boxtal-design.md §12).
       # ✅ FLIPPED TO `boxtal` ON THE LIVE SERVICE 2026-09-15 06:49:18 UTC, through the Render MCP on
