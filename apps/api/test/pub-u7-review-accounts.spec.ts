@@ -170,6 +170,7 @@ describe('the seal covers every cross-account site', () => {
   }
 
   it('the public profile route passes the viewer, so the seal has someone to compare', () => {
-    expect(src('repairers/repairers.controller.ts')).toMatch(/getPublicProfile\(userId, session\.user\.id\)/);
+    // 24/11/2026: a signed-out visitor of the website passes null (the real side, see the service).
+    expect(src('repairers/repairers.controller.ts')).toMatch(/getPublicProfile\(userId, session\?\.user\?\.id \?\? null\)/);
   });
 });
