@@ -3296,3 +3296,47 @@ body {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+.ap-moredetails {
+  margin-top: 6px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+.ap-moredetails summary {
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 15.5px;
+  margin-bottom: 4px;
+}
+.ap-moredetails summary em {
+  font-style: normal;
+  font-weight: 500;
+  color: var(--muted);
+}
+.ap-moredetails[open] summary {
+  margin-bottom: 14px;
+}
+.ap-published {
+  margin: 12px 0 20px;
+  padding: 22px 24px;
+  border-radius: var(--r-card);
+  background: var(--green-soft, #ecfdf3);
+  color: var(--ink);
+}
+.ap-published h2 {
+  margin: 0 0 4px;
+  font-size: 22px;
+  color: #067647;
+}
+.ap-published p {
+  margin: 0 0 10px;
+  font-weight: 600;
+}
+.ap-published ol {
+  margin: 0;
+  padding-left: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 15.5px;
+  line-height: 1.5;
+}

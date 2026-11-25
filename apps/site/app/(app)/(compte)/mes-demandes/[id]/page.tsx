@@ -193,9 +193,21 @@ function Detail({ id }: { id: string }) {
         ‹ Mes réparations
       </Link>
       {published && (
-        <p className="ap-success" role="status">
-          Demande publiée. Les réparateurs de votre zone sont prévenus : vous recevrez une notification à chaque offre.
-        </p>
+        <section className="ap-published" role="status" aria-labelledby="h-pub">
+          <h2 id="h-pub">Votre demande est publiée</h2>
+          <p>Et maintenant ?</p>
+          <ol>
+            <li>
+              <strong>Les réparateurs proches sont prévenus.</strong> Ceux qui réparent ce type d’objet dans votre zone voient votre demande.
+            </li>
+            <li>
+              <strong>Vous recevez leurs offres</strong> par e-mail et dans l’appli, avec le prix, le délai et la garantie. Une offre reste valable 7 jours.
+            </li>
+            <li>
+              <strong>Vous comparez et choisissez.</strong> Rien n’est payé tant que vous n’avez pas choisi.
+            </li>
+          </ol>
+        </section>
       )}
 
       <header className="ap-detail__head">

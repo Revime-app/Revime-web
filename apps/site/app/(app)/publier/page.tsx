@@ -184,7 +184,7 @@ function PublishForm() {
     <div className="ap-page ap-pubpage">
       <div className="ap-publish__head">
         <h1>Décrivez ce qu’il faut réparer</h1>
-        <p>Gratuit et sans engagement. Les réparateurs de votre zone vous envoient leurs offres.</p>
+        <p>3 questions, environ 2 minutes. Gratuit et sans engagement : les réparateurs de votre zone vous envoient leurs offres. On vous demandera de vous connecter seulement au moment de publier, sans rien perdre.</p>
       </div>
 
       <form className="ap-publish__grid" onSubmit={submit} noValidate>
@@ -218,20 +218,6 @@ function PublishForm() {
               </div>
             )}
             {show('category') && <p className="ap-error">{show('category')}</p>}
-            <div className="ap-row2">
-              <label className="ap-field">
-                <span>
-                  Marque <em>facultatif</em>
-                </span>
-                <input value={brand} onChange={(e) => setBrand(e.target.value)} placeholder="ex. Apple" maxLength={60} />
-              </label>
-              <label className="ap-field">
-                <span>
-                  Modèle <em>facultatif</em>
-                </span>
-                <input value={model} onChange={(e) => setModel(e.target.value)} placeholder="ex. iPhone 13" maxLength={60} />
-              </label>
-            </div>
             <div className="ap-field">
               <span>
                 Photos <em>facultatif, {MAX_PHOTOS} au maximum</em>
@@ -294,6 +280,24 @@ function PublishForm() {
               />
             </label>
             {show('description') && <p className="ap-error">{show('description')}</p>}
+            <details className="ap-moredetails">
+              <summary>
+                Plus de détails <em>(facultatif : marque, modèle, pièces)</em>
+              </summary>
+            <div className="ap-row2">
+              <label className="ap-field">
+                <span>
+                  Marque <em>facultatif</em>
+                </span>
+                <input value={brand} onChange={(e) => setBrand(e.target.value)} placeholder="ex. Apple" maxLength={60} />
+              </label>
+              <label className="ap-field">
+                <span>
+                  Modèle <em>facultatif</em>
+                </span>
+                <input value={model} onChange={(e) => setModel(e.target.value)} placeholder="ex. iPhone 13" maxLength={60} />
+              </label>
+            </div>
             <div className="ap-field">
               <span>Pièces</span>
               <div className="ap-chips ap-chips--wrap" role="radiogroup" aria-label="Pièces">
@@ -304,6 +308,7 @@ function PublishForm() {
                 ))}
               </div>
             </div>
+            </details>
           </Section>
 
           <Section n={3} title="Où et comment">
