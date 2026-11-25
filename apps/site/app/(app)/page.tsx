@@ -56,9 +56,9 @@ export default function HomePage() {
 
       <section className="ap-section" aria-labelledby="h-cat">
         <div className="ap-section__head">
-          <h2 id="h-cat">Que faut-il réparer ?</h2>
+          <h2 id="h-cat">Catégories</h2>
           <Link href="/reparateurs" className="ap-more">
-            Tous les réparateurs
+            Voir tout
           </Link>
         </div>
         <div className="ap-cats">

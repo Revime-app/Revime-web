@@ -77,9 +77,9 @@ export function TopRepairers() {
   return (
     <section className="ap-section" aria-labelledby="h-rep">
       <div className="ap-section__head">
-        <h2 id="h-rep">Des réparateurs bien notés</h2>
+        <h2 id="h-rep">Réparateurs bien notés</h2>
         <Link href="/reparateurs" className="ap-more">
-          Voir tous les réparateurs
+          Voir tout
         </Link>
       </div>
       <div className="ap-grid ap-grid--rep">
@@ -100,7 +100,7 @@ export function RecentDemandes() {
       <div className="ap-section__head">
         <h2 id="h-dem">Demandes récentes</h2>
         <Link href="/demandes" className="ap-more">
-          Voir toutes les demandes
+          Voir tout
         </Link>
       </div>
       <div className="ap-grid ap-grid--tiles">
