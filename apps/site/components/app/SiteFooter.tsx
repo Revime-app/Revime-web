@@ -15,6 +15,16 @@ export function SiteFooter() {
           <p>La réparation de tous vos objets, par des réparateurs vérifiés près de chez vous.</p>
           <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>
         </div>
+        <nav aria-label="REVIME" className="ap-footer__site">
+          <ul>
+            <li><Link href="/comment-ca-marche">Comment ça marche</Link></li>
+            <li><Link href="/protection-revime">Protection REVIME</Link></li>
+            <li><Link href="/reparateurs">Trouver un réparateur</Link></li>
+            <li><Link href="/devenir-reparateur">Devenir réparateur</Link></li>
+            <li><Link href="/qui-sommes-nous">Qui sommes-nous</Link></li>
+            <li><Link href="/aide">Aide et questions</Link></li>
+          </ul>
+        </nav>
         <nav aria-label="Informations">
           <ul>
             {PUBLIC_DOCUMENTS.map((d) => (

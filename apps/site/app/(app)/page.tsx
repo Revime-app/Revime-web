@@ -24,7 +24,7 @@ export default function HomePage() {
     <div className="ap-home">
       <JsonLd data={[organizationJsonLd(), websiteJsonLd()]} />
 
-      <section className="ap-hero">
+      <section className="ap-hero ap-hero--solo">
         <div className="ap-hero__text">
           <HomePersonal slot="greeting" />
           <h1>
@@ -32,11 +32,16 @@ export default function HomePage() {
             Comparez, puis choisissez.
           </h1>
           <p className="ap-hero__lede">
-            Décrivez la panne, recevez les offres de réparateurs vérifiés près de chez vous et payez seulement quand
-            c’est réparé.
+            REVIME vous met en relation avec des réparateurs vérifiés près de chez vous. Vous comparez leurs offres, et le
+            réparateur est payé seulement quand c’est réparé.
           </p>
           <HomeHeroSearch />
         </div>
+      </section>
+
+      <HomePersonal slot="active" />
+
+      <div className="ap-herorow">
         <Link href="/publier" className="ap-promo">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img className="ap-promo__art" src="/illustrations/banner1.webp" alt="" />
@@ -50,13 +55,27 @@ export default function HomePage() {
             </span>
           </span>
         </Link>
-      </section>
-
-      <HomePersonal slot="active" />
-
-      <RecentDemandes />
-
-      <TopRepairers />
+        <section className="ap-howcard" aria-labelledby="h-how">
+          <h2 id="h-how">Comment ça marche ?</h2>
+          <ol>
+            <li>
+              <strong>Décrivez la panne</strong>
+              <span>Gratuit, environ 2 minutes</span>
+            </li>
+            <li>
+              <strong>Comparez les offres</strong>
+              <span>Prix, délai, garantie, avis</span>
+            </li>
+            <li>
+              <strong>Payez quand c’est réparé</strong>
+              <span>Argent bloqué jusqu’à votre validation</span>
+            </li>
+          </ol>
+          <Link href="/comment-ca-marche" className="ap-more">
+            En savoir plus
+          </Link>
+        </section>
+      </div>
 
       <section className="ap-section" aria-labelledby="h-cat">
         <div className="ap-section__head">
@@ -80,51 +99,65 @@ export default function HomePage() {
         </div>
       </section>
 
+      <ul className="ap-trustbar" aria-label="Nos engagements">
+        <li>Gratuit et sans engagement</li>
+        <li>Réparateurs vérifiés</li>
+        <li>Payé après votre validation</li>
+        <li>Aide de REVIME en cas de litige</li>
+      </ul>
+
+      <TopRepairers />
+
+      <RecentDemandes />
+
       <section className="ap-section" aria-labelledby="h-why">
-        <h2 id="h-why">Ce que REVIME vous garantit</h2>
-        <ul className="ap-promises">
+        <h2 id="h-why">Faire réparer, sans mauvaise surprise</h2>
+        <ul className="ap-promises ap-promises--4">
+          <li>
+            <span className="ap-promises__icon">
+              <IconCompare size={24} />
+            </span>
+            <strong>Vous comparez</strong>
+            <span>Plusieurs offres côte à côte : prix, délai, garantie, avis.</span>
+            <Link href="/comment-ca-marche" className="ap-more">Comment ça marche</Link>
+          </li>
           <li>
             <span className="ap-promises__icon">
               <IconShieldCheck size={24} />
             </span>
-            <strong>Payé seulement quand c’est réparé</strong>
-            <span>Votre paiement reste bloqué jusqu’à ce que vous validiez la réparation. Sinon, vous êtes remboursé.</span>
+            <strong>Votre argent est protégé</strong>
+            <span>Bloqué jusqu’à votre validation. En cas de litige, REVIME étudie le dossier.</span>
+            <Link href="/protection-revime" className="ap-more">Protection REVIME</Link>
           </li>
           <li>
             <span className="ap-promises__icon">
               <IconUserCheck size={24} />
             </span>
             <strong>Des réparateurs vérifiés</strong>
-            <span>Identité contrôlée pour tous, entreprise contrôlée pour les professionnels. Les avis viennent de vrais clients.</span>
+            <span>Identité contrôlée, entreprise vérifiée pour les pros, avis de vrais clients.</span>
+            <Link href="/qui-sommes-nous" className="ap-more">Qui sommes-nous</Link>
           </li>
           <li>
             <span className="ap-promises__icon">
-              <IconCompare size={24} />
+              <IconArrowRight size={24} />
             </span>
-            <strong>Plusieurs offres, côte à côte</strong>
-            <span>Prix, délai, garantie et avis : vous comparez avant de choisir, sans engagement et sans frais pour demander.</span>
+            <strong>Près de chez vous</strong>
+            <span>Atelier, domicile ou colis : vous voyez la distance et le mode.</span>
+            <Link href="/reparateurs" className="ap-more">Trouver un réparateur</Link>
           </li>
         </ul>
       </section>
 
-      <section className="ap-section" aria-labelledby="h-how">
-        <h2 id="h-how">Comment ça marche</h2>
-        <ol className="ap-how">
-          <li>
-            <strong>Décrivez la panne</strong>
-            <span>Une photo et quelques mots. C’est gratuit et sans engagement.</span>
-          </li>
-          <li>
-            <strong>Comparez les offres</strong>
-            <span>Prix, délai, garantie et avis : tout est côte à côte.</span>
-          </li>
-          <li>
-            <strong>Payez quand c’est réparé</strong>
-            <span>Votre paiement reste bloqué jusqu’à ce que vous validiez la réparation.</span>
-          </li>
-        </ol>
+      <section className="ap-proband" aria-labelledby="h-pro">
+        <div>
+          <p className="ap-eyebrow">Vous savez réparer ?</p>
+          <h2 id="h-pro">Faites-vous trouver par les gens de votre quartier.</h2>
+          <p>Artisan, atelier ou particulier bricoleur : recevez les demandes proches, envoyez votre prix, soyez payé à la validation.</p>
+        </div>
+        <Link href="/devenir-reparateur" className="ap-proband__cta">
+          Devenir réparateur
+        </Link>
       </section>
-
     </div>
   );
 }

@@ -93,7 +93,7 @@ function ActiveDemande() {
 /** What changes once signed in: the greeting, and the demande being followed. */
 export function HomePersonal({ slot }: { slot: 'greeting' | 'active' }) {
   const { me } = useSession();
-  if (!me) return slot === 'greeting' ? <p className="ap-eyebrow">Réparation près de chez vous</p> : null;
+  if (!me) return slot === 'greeting' ? <p className="ap-eyebrow">Bienvenue sur REVIME</p> : null;
   if (slot === 'greeting') {
     const first = me.firstName?.trim();
     return <p className="ap-eyebrow">{first ? `Bonjour ${first}` : 'Bonjour'}</p>;
