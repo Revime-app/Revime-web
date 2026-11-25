@@ -6,6 +6,7 @@ import { useRequireSession, useSession } from '../../../../lib/client/session';
 import { PUBLIC_DOCUMENTS, SUPPORT_EMAIL } from '../../../../lib/documents';
 import { IconChevronRight } from '../../../../components/app/icons';
 import { Loader, PageTitle } from '../../../../components/app/ui';
+import { ModeSwitch } from '../../../../components/app/ModeSwitch';
 
 /**
  * The app's Paramètres, sorted the same way (Compte, Mode, Confidentialité, Informations légales).
@@ -40,17 +41,8 @@ export default function ParametresPage() {
       <p className="ap-hint">Le mot de passe, la sécurité et les notifications se modifient dans l’appli pour l’instant.</p>
 
       <h2 className="ap-eyebrow-h">Mode</h2>
-      <div className="ap-box ap-kv">
-        <div>
-          <dt>Mode client</dt>
-          <dd>Actif</dd>
-        </div>
-        <div>
-          <dt>Mode réparateur</dt>
-          <dd>Dans l’appli</dd>
-        </div>
-      </div>
-      <p className="ap-hint">Un seul compte, deux usages. L’espace réparateur arrive sur le site après l’espace client.</p>
+      <ModeSwitch />
+      <p className="ap-hint">Un seul compte, deux usages. Le mode est le même sur le site et dans l’appli.</p>
 
       <h2 className="ap-eyebrow-h">Confidentialité</h2>
       <nav className="ap-list">

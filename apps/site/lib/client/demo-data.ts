@@ -329,7 +329,7 @@ const me = {
   phone: '06 12 34 56 78',
   emailVerified: true,
   phoneVerified: true,
-  profile: { activeMode: 'CLIENT' },
+  profile: { activeMode: 'CLIENT' as 'CLIENT' | 'REPAIRER', clientEnabled: true, repairerEnabled: true },
 };
 
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -411,6 +411,10 @@ export async function demoGet<T>(path: string): Promise<T> {
 
 export async function demoPost<T>(path: string, body: unknown): Promise<T> {
   await wait(400);
+  if (path === '/users/me/modes') {
+    Object.assign(me.profile, body as object);
+    return me as T;
+  }
   if (path === '/demandes') {
     const input = body as { title: string; locationLabel: string; categoryId: string };
     const created: DemandeListItem = {

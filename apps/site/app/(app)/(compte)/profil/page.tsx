@@ -8,6 +8,7 @@ import { useApi } from '../../../../lib/client/use-api';
 import { ACCOUNT_LINKS } from '../../../../components/app/AccountNav';
 import { IconBadgeCheck, IconChevronRight, IconLogout } from '../../../../components/app/icons';
 import { Loader, initials } from '../../../../components/app/ui';
+import { ModeSwitch } from '../../../../components/app/ModeSwitch';
 
 /** The app's Profil tab: the red identity card, the verifications, then the shortcuts. */
 export default function ProfilPage() {
@@ -35,7 +36,7 @@ export default function ProfilPage() {
           <div>
             <strong>{name}</strong>
             <span>{me.email}</span>
-            <span className="ap-idcard__role">Client</span>
+            <span className="ap-idcard__role">{me.profile.activeMode === 'REPAIRER' ? 'Réparateur' : 'Client'}</span>
           </div>
         </div>
         <dl className="ap-idcard__stats">
@@ -59,6 +60,11 @@ export default function ProfilPage() {
           ))}
         </ul>
       )}
+
+      <div className="ap-only-phone">
+        <h2 className="ap-eyebrow-h">Mode</h2>
+        <ModeSwitch />
+      </div>
 
       <h2 className="ap-eyebrow-h ap-only-phone">Raccourcis</h2>
       <nav className="ap-shortcuts ap-only-phone" aria-label="Raccourcis">

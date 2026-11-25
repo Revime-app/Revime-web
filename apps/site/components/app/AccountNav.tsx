@@ -13,6 +13,7 @@ import {
   IconWrench,
 } from './icons';
 import { initials } from './ui';
+import { ModeSwitch } from './ModeSwitch';
 
 /**
  * The app's « Raccourcis » (Profil tab), as a website does it: a column that stays beside every
@@ -42,10 +43,11 @@ export function AccountNav() {
           </span>
           <span>
             <strong>{name}</strong>
-            <span>Client</span>
+            <span>{me.profile.activeMode === 'REPAIRER' ? 'Réparateur' : 'Client'}</span>
           </span>
         </Link>
       )}
+      <ModeSwitch compact />
       <nav>
         {ACCOUNT_LINKS.map(({ href, label, icon: Icon }) => (
           <Link key={href} href={href} aria-current={pathname === href || pathname.startsWith(`${href}/`) ? 'page' : undefined}>

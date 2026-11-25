@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Suspense, useEffect, useMemo, useState } from 'react';
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   DEMANDE_DESCRIPTION_MIN,
@@ -9,11 +9,13 @@ import {
   type CategoryDto,
   type CreateDemandeInput,
   type DemandeDto,
+  type MeResponse,
   type SignPhotoResponse,
 } from '@revime/shared';
 import { api, errorMessage } from '../../../lib/client/api';
 import { DEMO } from '../../../lib/client/config';
 import { useSession } from '../../../lib/client/session';
+import { modeBody, needsClientMode } from '../../../lib/client/mode';
 import { useApi } from '../../../lib/client/use-api';
 import { LoginForm } from '../../../components/app/LoginForm';
 import { CategoryIcon, iconForLabel } from '../../../components/app/categories';
@@ -65,7 +67,10 @@ function Section({ n, title, children }: { n: number; title: string; children: R
 function PublishForm() {
   const router = useRouter();
   const search = useSearchParams();
-  const { status } = useSession();
+  const { status, me, refresh } = useSession();
+  // `publish` can run from the login sheet's callback, after a newer render: read `me` fresh.
+  const meRef = useRef(me);
+  meRef.current = me;
   const categories = useApi<CategoryDto[]>('/categories');
   const draftId = useMemo(() => crypto.randomUUID(), []);
 
@@ -151,6 +156,12 @@ function PublishForm() {
         postalCode,
         photoPaths,
       };
+      if (needsClientMode(meRef.current)) {
+        // The API refuses a demande from an account in réparateur-only mode. Publishing is a
+        // client action, so switch first, as the app's Paramètres would, and say so on the button.
+        await api.patch<MeResponse>('/users/me/modes', modeBody('CLIENT'));
+        await refresh();
+      }
       const created = await api.post<DemandeDto>('/demandes', input);
       router.replace(`/mes-demandes/${created.id}?publiee=1`);
     } catch (e) {
@@ -370,6 +381,11 @@ function PublishForm() {
             {sending ? 'Publication…' : 'Publier ma demande'}
           </button>
           {status === 'out' && <p className="ap-hint ap-center-text">On vous demandera de vous connecter juste avant.</p>}
+          {needsClientMode(me) && (
+            <p className="ap-hint ap-center-text">
+              Vous êtes en mode réparateur : en publiant, votre compte passe en mode client, ici et dans l’appli.
+            </p>
+          )}
         </aside>
       </form>
 
