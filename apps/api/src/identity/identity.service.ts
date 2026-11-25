@@ -40,7 +40,7 @@ export class IdentityService {
     private readonly notifications: NotificationsService,
   ) {}
 
-  async start(userId: string, input: IdentitySessionInput): Promise<IdentitySessionResponse> {
+  async start(userId: string, input: IdentitySessionInput, surface: 'app' | 'web' = 'app'): Promise<IdentitySessionResponse> {
     if (!isConnectEnabled()) {
       throw new AppException('UNPROCESSABLE_ENTITY', IDENTITY_OFF);
     }
@@ -154,7 +154,8 @@ export class IdentityService {
     }
 
     const base = process.env.PUBLIC_API_URL;
-    const returnUrl = `${base}/api/v1/identity/return`;
+    // The site gets its own return route (a browser cannot open the app's revime:// link).
+    const returnUrl = surface === 'web' ? `${base}/api/v1/identity/return-web` : `${base}/api/v1/identity/return`;
 
     if (existing && !withdrawn) {
       /**

@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useSession } from '../../lib/client/session';
 import {
+  IconBadgeCheck,
   IconBriefcase,
   IconCompare,
   IconHeart,
@@ -36,6 +37,7 @@ export const ACCOUNT_LINKS = [
 /** The réparateur's rubriques, in the app's words (Profil tab, réparateur mode). */
 export const PRO_LINKS = [
   { href: '/tableau-de-bord', label: 'Tableau de bord', sub: 'À faire et activité', icon: IconHome },
+  { href: '/statut-verification', label: 'Configuration', sub: 'Identité, entreprise, versements', icon: IconBadgeCheck },
   { href: '/demandes', label: 'Demandes près de chez moi', sub: 'Faire une offre', icon: IconSearch },
   { href: '/mes-propositions', label: 'Mes propositions', sub: 'Offres et devis demandés', icon: IconCompare },
   { href: '/mes-missions', label: 'Mes réparations', sub: 'En cours, revenus', icon: IconBriefcase },

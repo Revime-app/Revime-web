@@ -26,7 +26,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const loginHref = (to: string) => (signedIn ? to : `/connexion?suite=${encodeURIComponent(to)}`);
   const searching = isOn(pathname, '/reparateurs') || isOn(pathname, '/demandes');
   const pro = signedIn && me?.profile.activeMode === 'REPAIRER';
-  const inAccount = ['/profil', '/mes-demandes', '/offres-recues', '/favoris', '/parametres', '/mes-propositions', '/mes-missions', '/profil-pro', '/commandes', '/notifications'].some((h) => isOn(pathname, h));
+  const inAccount = ['/profil', '/mes-demandes', '/offres-recues', '/favoris', '/parametres', '/mes-propositions', '/mes-missions', '/profil-pro', '/commandes', '/notifications', '/statut-verification', '/entreprise', '/fiscalite', '/mode-reparateur', '/identite'].some((h) => isOn(pathname, h));
   /** The visitor's four doors: the same bar shape as the app, with what a visitor needs. */
   const visitorTabs = [
     { href: '/', label: 'Accueil', icon: IconHome, on: pathname === '/', cls: undefined },
@@ -43,7 +43,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   ];
 
   return (
-    <div className="ap">
+    <div className="ap" data-mode={pro ? 'pro' : undefined}>
       <Spotlight />
       <div className="ap-progress" aria-hidden="true" />
       <a className="ap-skip" href="#contenu">

@@ -3,7 +3,10 @@
 import Link from 'next/link';
 import { use, useState } from 'react';
 import {
+  CANCELLATION_REASON_LABEL,
   STEP_LABEL,
+  cancellationPolicy,
+  disputePolicy,
   canAdvance,
   canValidate,
   labelReady,
@@ -23,7 +26,7 @@ import { Loader, PageTitle, euroFmt } from '../../../../../components/app/ui';
  * One réparation, as both parties see it (the app's `commande/[id]`): the steps, the money, and
  * the one thing this person can do next. The rules come from @revime/shared (`canAdvance`,
  * `canValidate`, `labelReady`), so the site offers exactly the buttons the app offers.
- * Parcel labels, relay points, cancellation and disputes stay in the app for now.
+ * Cancellation (`/annulation`) and disputes (`/litige`) as in the app; parcel labels stay in the app.
  */
 const DELIVERY_LABEL = { HOME: 'À domicile', WORKSHOP: 'En atelier', PARCEL: 'Par colis' } as const;
 const dateFmt = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'long' });
@@ -98,7 +101,19 @@ export default function CommandePage({ params }: { params: Promise<{ id: string 
   const steps = stepsFor(c.delivery);
   const at = steps.indexOf(step);
   const next = nextStepFor(step, c.delivery);
-  const blocked = c.status === 'REFUNDED' || c.paymentUnderReview || c.disputeOpen;
+  const policy = cancellationPolicy(
+    {
+      status: c.status,
+      step: c.step,
+      transferred: c.status === 'PAID' && c.step === 'RELEASED',
+      disputeOpen: c.disputeOpen,
+      paymentUnderReview: c.paymentUnderReview,
+      request: c.cancellationRequest ?? null,
+    },
+    role,
+  );
+  const dispPolicy = disputePolicy({ status: c.status, releasedAt: c.releasedAt, dispute: c.dispute });
+  const blocked = c.status === 'REFUNDED' || c.paymentUnderReview || c.disputeOpen || policy.frozen;
   const advanceable = !blocked && canAdvance(step, c.delivery, role) && next !== null && labelReady(next, c);
   const validatable = !blocked && canValidate(step, role);
   const back = role === 'REPAIRER' ? '/mes-missions' : `/mes-demandes/${c.demandeId}`;
@@ -119,6 +134,7 @@ export default function CommandePage({ params }: { params: Promise<{ id: string 
   let headline: string;
   if (c.status === 'REFUNDED') headline = 'Remboursée';
   else if (c.disputeOpen) headline = 'Litige en cours : REVIME examine la situation';
+  else if (policy.frozen) headline = role === 'REPAIRER' ? 'Le client demande l’annulation' : 'Demande d’annulation envoyée';
   else if (step === 'RELEASED') headline = role === 'REPAIRER' ? 'Terminée : vous avez été payé' : 'Terminée';
   else if (advanceable || validatable) headline = 'À vous de jouer';
   else headline = role === 'REPAIRER' ? 'En attente du client' : `${c.repairerName} s’en occupe`;
@@ -146,7 +162,7 @@ export default function CommandePage({ params }: { params: Promise<{ id: string 
               <>
                 <p>
                   Tout fonctionne ? En validant, vous libérez le paiement de {c.repairerName}. Un souci ? Écrivez-lui d’abord, ou
-                  signalez un problème depuis l’appli : REVIME intervient.
+                  signalez un problème : REVIME intervient.
                 </p>
                 <div className="ap-row-actions">
                   <button className="ap-btn ap-btn--primary ap-btn--lg" disabled={busy} onClick={() => void act(() => api.post(`/commandes/${c.id}/release`, {}))}>
@@ -155,6 +171,46 @@ export default function CommandePage({ params }: { params: Promise<{ id: string 
                   <Link href="/messages" className="ap-btn ap-btn--secondary">Écrire au réparateur</Link>
                 </div>
               </>
+            )}
+            {policy.frozen && c.cancellationRequest && (
+              <div className="ap-banner">
+                <p>
+                  {role === 'REPAIRER' ? 'Le client a demandé l’annulation' : 'Votre demande d’annulation est en cours d’examen'} : «{' '}
+                  {CANCELLATION_REASON_LABEL[c.cancellationRequest.reason]} ».
+                </p>
+                <p className="ap-muted">Les étapes sont en pause le temps que REVIME traite la demande.</p>
+                {policy.canWithdraw && (
+                  <button type="button" className="ap-link" disabled={busy} onClick={() => void act(() => api.post(`/commandes/${c.id}/cancellation/withdraw`, {}))}>
+                    Retirer ma demande d’annulation
+                  </button>
+                )}
+              </div>
+            )}
+            {policy.showRefused && c.cancellationRequest && (
+              <div className="ap-banner ap-banner--error">
+                <p>Votre demande d’annulation a été refusée.</p>
+                {c.cancellationRequest.refusalNote && <p>{c.cancellationRequest.refusalNote}</p>}
+              </div>
+            )}
+            {c.dispute && (
+              <Link href={`/commandes/${c.id}/litige`} className="ap-todo">
+                <strong>Litige {c.dispute.reference ?? `n° ${c.dispute.number}`}</strong>
+                <span>{c.disputeOpen ? 'En cours · voir les échanges avec REVIME' : 'Voir le détail'}</span>
+              </Link>
+            )}
+            {(dispPolicy.canOpen || policy.canRequest) && (
+              <div className="ap-row-actions">
+                {dispPolicy.canOpen && (
+                  <Link href={`/commandes/${c.id}/litige/nouveau`} className="ap-btn ap-btn--secondary">
+                    Signaler un problème
+                  </Link>
+                )}
+                {policy.canRequest && (
+                  <Link href={`/commandes/${c.id}/annulation`} className="ap-btn ap-btn--secondary">
+                    Demander l&apos;annulation
+                  </Link>
+                )}
+              </div>
             )}
             {error && <p className="ap-error" role="alert">{error}</p>}
           </section>

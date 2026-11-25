@@ -14,12 +14,13 @@ import { api, errorMessage } from '../../../../lib/client/api';
 import { useRequireSession, useSession } from '../../../../lib/client/session';
 import { useApi } from '../../../../lib/client/use-api';
 import { Loader, PageTitle } from '../../../../components/app/ui';
+import { AvatarEditor, BannerEditor } from '../../../../components/app/PhotoUpload';
 
 /**
  * « Mon profil public », the app's `profil-public` screens on one page: the name and the
  * description clients read, the area, the specialities and the hours. Each block saves on its
  * own (`PATCH /users/me/repairer-profile`, `PATCH /users/me/repairer`, `PUT /users/me/categories`,
- * `PUT /users/me/availability`). Photo and banner are uploaded from the app.
+ * `PUT /users/me/availability`), plus the photo and the banner (`/users/me/avatar`, `/users/me/banner`).
  */
 function useSave() {
   const { refresh } = useSession();
@@ -77,7 +78,7 @@ function Area({ me }: { me: MeResponse }) {
   const [radius, setRadius] = useState<number>(me.repairer?.serviceRadiusKm ?? 10);
   const s = useSave();
   return (
-    <form className="ap-box ap-form" onSubmit={(e) => { e.preventDefault(); void s.save(() => api.patch('/users/me/repairer', { postalCode: postalCode.trim(), serviceRadiusKm: radius })); }}>
+    <form id="zone" className="ap-box ap-form" onSubmit={(e) => { e.preventDefault(); void s.save(() => api.patch('/users/me/repairer', { postalCode: postalCode.trim(), serviceRadiusKm: radius })); }}>
       <h2>Zone d’intervention</h2>
       <label className="ap-field">
         <span>Code postal de l’atelier ou de votre domicile</span>
@@ -181,7 +182,7 @@ function ProfilePro() {
         <div className="ap-empty">
           <strong>Activez d’abord le mode réparateur</strong>
           <span>Choisissez « Réparateur » dans le sélecteur de mode, puis votre statut.</span>
-          <Link href="/parametres" className="ap-btn ap-btn--pro">Changer de mode</Link>
+          <Link href="/mode-reparateur" className="ap-btn ap-btn--pro">Devenir réparateur</Link>
         </div>
       </div>
     );
@@ -198,12 +199,13 @@ function ProfilePro() {
         </div>
       )}
       <div className="ap-proform">
+        <AvatarEditor me={me} />
+        <BannerEditor me={me} />
         <Identity me={me} />
         <Area me={me} />
         <Categories me={me} />
         <Hours me={me} />
       </div>
-      <p className="ap-hint">La photo et la bannière se changent dans l’appli REVIME.</p>
     </div>
   );
 }

@@ -1,84 +1,110 @@
 'use client';
 
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 import { useRequireSession, useSession } from '../../../../lib/client/session';
+import { useModeSwitch } from '../../../../lib/client/mode';
 import { PUBLIC_DOCUMENTS, SUPPORT_EMAIL } from '../../../../lib/documents';
-import { IconChevronRight } from '../../../../components/app/icons';
 import { Loader, PageTitle } from '../../../../components/app/ui';
-import { ModeSwitch } from '../../../../components/app/ModeSwitch';
+import { SettingsRow, SettingsSection } from '../../../../components/app/Settings';
 
 /**
- * The app's Paramètres, sorted the same way (Compte, Mode, Confidentialité, Informations légales).
- * What the site cannot change yet says where it is changed today, instead of a dead row.
+ * The app's Paramètres (apps/mobile/app/parametres/index.tsx), same sections in the same order:
+ * Compte (4 screens), Mode, Confidentialité, Informations légales, then Déconnexion and
+ * Supprimer mon compte.
  */
 export default function ParametresPage() {
   const me = useRequireSession();
   const { signOut } = useSession();
+  const { mode, repairerEnabled, switching, error, switchTo } = useModeSwitch();
   const router = useRouter();
+  const [confirmOut, setConfirmOut] = useState(false);
   if (!me) return <Loader />;
-  const privacy = PUBLIC_DOCUMENTS.filter((d) => /confidentialit/i.test(d.label));
+
   const legal = PUBLIC_DOCUMENTS.filter((d) => !/confidentialit/i.test(d.label));
+
+  async function toMode(target: 'CLIENT' | 'REPAIRER') {
+    if (switching || mode === target) return;
+    // First time in réparateur mode: the app's « Mode réparateur » screen asks Particulier or Professionnel.
+    if (target === 'REPAIRER' && !repairerEnabled) {
+      router.push('/mode-reparateur');
+      return;
+    }
+    await switchTo(target);
+  }
+
   return (
-    <div className="ap-page">
-      <PageTitle title="Paramètres" />
+    <div className="ap-page ap-settings">
+      <PageTitle title="Paramètres" back="/profil" />
 
-      <h2 className="ap-eyebrow-h">Compte</h2>
-      <dl className="ap-box ap-kv">
-        <div>
-          <dt>Nom</dt>
-          <dd>{[me.firstName, me.lastName].filter(Boolean).join(' ') || '–'}</dd>
-        </div>
-        <div>
-          <dt>E-mail</dt>
-          <dd>{me.email}</dd>
-        </div>
-        <div>
-          <dt>Téléphone</dt>
-          <dd>{me.phone ?? 'Non renseigné'}</dd>
-        </div>
-      </dl>
-      <p className="ap-hint">Mot de passe oublié ? <Link href="/mot-de-passe-oublie">Recevoir un lien</Link>. La sécurité et les notifications se modifient dans l’appli.</p>
+      <SettingsSection title="Compte">
+        <SettingsRow label="Informations du compte" href="/parametres/compte" />
+        <SettingsRow label="Informations personnelles" href="/parametres/personnel" />
+        <SettingsRow label="Sécurité" href="/parametres/securite" />
+        <SettingsRow label="Notifications" href="/parametres/notifications" />
+      </SettingsSection>
 
-      <h2 className="ap-eyebrow-h">Mode</h2>
-      <ModeSwitch />
-      <p className="ap-hint">Un seul compte, deux usages. Le mode est le même sur le site et dans l’appli.</p>
+      <SettingsSection title="Mode">
+        <SettingsRow
+          label="Mode client"
+          value={switching === 'CLIENT' ? 'Changement…' : mode === 'CLIENT' ? 'Actif' : null}
+          onClick={mode === 'CLIENT' || switching ? null : () => void toMode('CLIENT')}
+        />
+        <SettingsRow
+          label="Mode réparateur"
+          value={switching === 'REPAIRER' ? 'Changement…' : mode === 'REPAIRER' ? 'Actif' : null}
+          onClick={mode === 'REPAIRER' || switching ? null : () => void toMode('REPAIRER')}
+        />
+      </SettingsSection>
+      {error && (
+        <p className="ap-field__error" role="alert">
+          {error}
+        </p>
+      )}
+      <p className="ap-hint ap-settings__note">
+        Le mode client vous permet de publier des demandes et de recevoir des offres. Le mode réparateur vous permet
+        de répondre aux demandes et de gérer vos réparations. Le mode est le même sur le site et dans l’appli.
+      </p>
 
-      <h2 className="ap-eyebrow-h">Confidentialité</h2>
-      <nav className="ap-list">
-        {privacy.map((d) => (
-          <Link key={d.slug} href={`/${d.slug}`}>
-            {d.label} <IconChevronRight size={18} />
-          </Link>
-        ))}
-      </nav>
+      <SettingsSection title="Confidentialité">
+        <SettingsRow label="Politique de confidentialité" href="/parametres/confidentialite" />
+      </SettingsSection>
 
-      <h2 className="ap-eyebrow-h">Informations légales</h2>
-      <nav className="ap-list">
+      <SettingsSection title="Informations légales">
         {legal.map((d) => (
-          <Link key={d.slug} href={`/${d.slug}`}>
-            {d.label} <IconChevronRight size={18} />
-          </Link>
+          <SettingsRow key={d.slug} label={d.label} href={`/${d.slug}`} />
         ))}
-      </nav>
+      </SettingsSection>
 
-      <h2 className="ap-eyebrow-h">Aide</h2>
-      <nav className="ap-list">
-        <a href={`mailto:${SUPPORT_EMAIL}`}>
-          Contacter le support <IconChevronRight size={18} />
-        </a>
-        <Link href="/suppression-compte">
-          Supprimer mon compte <IconChevronRight size={18} />
-        </Link>
-        <button
-          onClick={async () => {
-            await signOut();
-            router.push('/');
-          }}
-        >
-          Se déconnecter
-        </button>
-      </nav>
+      <SettingsSection title="Aide">
+        <SettingsRow label="Contacter le support" value={SUPPORT_EMAIL} href={`mailto:${SUPPORT_EMAIL}`} external />
+      </SettingsSection>
+
+      <SettingsSection title={null}>
+        {confirmOut ? (
+          <div className="ap-set__confirm">
+            <p>Voulez-vous vraiment vous déconnecter ?</p>
+            <div>
+              <button type="button" className="ap-btn ap-btn--secondary ap-btn--sm" onClick={() => setConfirmOut(false)}>
+                Annuler
+              </button>
+              <button
+                type="button"
+                className="ap-btn ap-btn--danger ap-btn--sm"
+                onClick={async () => {
+                  await signOut();
+                  router.push('/');
+                }}
+              >
+                Déconnexion
+              </button>
+            </div>
+          </div>
+        ) : (
+          <SettingsRow label="Déconnexion" destructive onClick={() => setConfirmOut(true)} />
+        )}
+        <SettingsRow label="Supprimer mon compte" destructive href="/parametres/supprimer" />
+      </SettingsSection>
     </div>
   );
 }

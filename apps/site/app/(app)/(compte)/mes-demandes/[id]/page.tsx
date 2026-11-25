@@ -1,9 +1,10 @@
 'use client';
 
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, use, useState } from 'react';
-import { protectionCentsFor, VERIFIED_BADGE_LABEL, type DemandeDto, type OfferDto } from '@revime/shared';
+import { demandeEditPolicy, protectionCentsFor, VERIFIED_BADGE_LABEL, type DemandeDto, type OfferDto } from '@revime/shared';
+import { api, errorMessage } from '../../../../../lib/client/api';
 import { useRequireSession } from '../../../../../lib/client/session';
 import { useApi } from '../../../../../lib/client/use-api';
 import { CategoryIcon, iconForLabel } from '../../../../../components/app/categories';
@@ -173,6 +174,11 @@ function Detail({ id }: { id: string }) {
   const me = useRequireSession();
   const sp = useSearchParams();
   const published = sp.get('publiee') === '1';
+  const edited = sp.get('modifiee') === '1';
+  const router = useRouter();
+  const [confirm, setConfirm] = useState<'cancel' | 'delete' | null>(null);
+  const [acting, setActing] = useState(false);
+  const [actError, setActError] = useState<string | null>(null);
   const privateQuote = sp.get('devis') === '1';
   const demande = useApi<DemandeDto>(me ? `/demandes/${id}` : null);
   const offers = useApi<OfferDto[]>(me ? `/demandes/${id}/offers` : null);
@@ -197,12 +203,36 @@ function Detail({ id }: { id: string }) {
   const live = [...(offers.data ?? []).filter((o) => o.status === 'SENT')].sort(SORTS.find((s) => s.key === sort)!.by);
   const chosen = live.find((o) => o.id === chosenId) ?? null;
   const fee = chosen ? protectionCentsFor(chosen.priceCents) : 0;
+  const isPrivate = Boolean(d.quoteRequest);
+  const policy = demandeEditPolicy(d.status, d.offerCount);
+  // The app's two exits before payment: « Annuler la demande » once offers exist (they are told),
+  // « Supprimer » while nobody has answered yet (offres.tsx, modifier.tsx).
+  const canCancel = d.status === 'OPEN' && d.offerCount > 0 && !isPrivate;
+  const canDelete = policy.canDelete && d.offerCount === 0 && !isPrivate;
+
+  async function run(kind: 'cancel' | 'delete') {
+    setActing(true);
+    setActError(null);
+    try {
+      if (kind === 'cancel') await api.post(`/demandes/${d.id}/cancel`, {});
+      else await api.del(`/demandes/${d.id}`);
+      router.replace('/mes-demandes');
+    } catch (e) {
+      setActError(errorMessage(e) || "L'annulation n'a pas pu être effectuée.");
+      setActing(false);
+    }
+  }
 
   return (
     <div className={chosen ? 'ap-page ap-detail has-bar' : 'ap-page ap-detail'}>
       <Link href="/mes-demandes" className="ap-crumb">
         ‹ Mes réparations
       </Link>
+      {edited && (
+        <p className="ap-published" role="status">
+          Modifications enregistrées.
+        </p>
+      )}
       {published && (
         <section className="ap-published" role="status" aria-labelledby="h-pub">
           <SuccessMark />
@@ -319,6 +349,34 @@ function Detail({ id }: { id: string }) {
               <dt>Prix</dt>
               <dd>{d.mode === 'BUDGET' && d.budgetCents ? `Budget de ${euroFmt(d.budgetCents)}` : 'Je reçois des offres'}</dd>
             </dl>
+            {policy.canEdit && !isPrivate && (
+              <Link href={`/publier?modifier=${d.id}`} className="ap-btn ap-btn--secondary ap-btn--block">
+                Modifier la demande
+              </Link>
+            )}
+            {(canCancel || canDelete) &&
+              (confirm ? (
+                <div className="ap-set__confirm">
+                  <p>
+                    {confirm === 'cancel'
+                      ? 'Annuler la demande ? Les réparateurs ayant fait une offre seront informés. Cette action est définitive.'
+                      : 'Supprimer la demande ? Elle disparaît pour tout le monde. Cette action est définitive.'}
+                  </p>
+                  <div>
+                    <button type="button" className="ap-btn ap-btn--secondary ap-btn--sm" onClick={() => setConfirm(null)} disabled={acting}>
+                      Retour
+                    </button>
+                    <button type="button" className="ap-btn ap-btn--danger ap-btn--sm" onClick={() => void run(confirm)} disabled={acting}>
+                      {acting ? 'Un instant…' : 'Confirmer'}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button type="button" className="ap-link ap-link--muted" onClick={() => setConfirm(canCancel ? 'cancel' : 'delete')}>
+                  {canCancel ? 'Annuler la demande' : 'Supprimer la demande'}
+                </button>
+              ))}
+            {actError && <p className="ap-field__error">{actError}</p>}
           </section>
           <section className="ap-box ap-box--dark">
             <IconShieldCheck size={22} />

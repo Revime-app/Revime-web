@@ -17,7 +17,7 @@ export function ProChecklist({ me }: { me: MeResponse }) {
     { done: r.categoryIds.length > 0, label: 'Ce que vous réparez', href: '/profil-pro#categories' },
     { done: Boolean(r.bio && r.bio.length >= 40), label: 'Une description de 40 caractères ou plus', href: '/profil-pro' },
     { done: (r.availability?.length ?? 0) === 7, label: 'Vos horaires', href: '/profil-pro' },
-    { done: Boolean(me.avatarUrl), label: 'Une photo (dans l’appli)', href: '/profil-pro' },
+    { done: Boolean(me.avatarUrl), label: 'Une photo de profil', href: '/profil-pro' },
     { done: Boolean(connect.data?.transfersActive), label: 'Vos versements', href: '/tableau-de-bord#versements' },
   ];
   const n = steps.filter((s) => s.done).length;

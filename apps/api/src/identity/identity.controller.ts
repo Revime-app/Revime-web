@@ -6,6 +6,7 @@ import {
   Headers,
   HttpCode,
   Post,
+  Query,
   Redirect,
   Req,
 } from '@nestjs/common';
@@ -19,6 +20,7 @@ import {
 } from '@revime/shared';
 import { ZodValidationPipe } from '../common/zod-validation.pipe.js';
 import { IdentityService } from './identity.service.js';
+import { siteOrigins } from '../auth/site-origins.js';
 
 @Controller()
 export class IdentityController {
@@ -33,8 +35,9 @@ export class IdentityController {
   session(
     @Session() session: UserSession,
     @Body(new ZodValidationPipe(identitySessionRequestSchema)) body: IdentitySessionInput,
+    @Query('surface') surface?: string,
   ): Promise<IdentitySessionResponse> {
-    return this.identity.start(session.user.id, body);
+    return this.identity.start(session.user.id, body, surface === 'web' ? 'web' : 'app');
   }
 
   @Get('identity/status')
@@ -69,6 +72,15 @@ export class IdentityController {
   @SkipPlatformGates()
   @Redirect('revime://identite/retour', 302)
   returnFromIdentity(): void {}
+
+  /** The same exit, for a verification started on the site: back to the site's return page. */
+  @Get('identity/return-web')
+  @AllowAnonymous()
+  @SkipPlatformGates()
+  @Redirect('https://revime.fr/identite/retour', 302)
+  returnFromIdentityWeb(): { url: string } {
+    return { url: `${siteOrigins()[0]}/identite/retour` };
+  }
 
   /**
    * Stripe's endpoint, and its OWN endpoint rather than cases inside P1's

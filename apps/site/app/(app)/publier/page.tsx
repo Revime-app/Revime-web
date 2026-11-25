@@ -12,6 +12,7 @@ import {
   type MeResponse,
   type RepairerProfileDto,
   type SignPhotoResponse,
+  demandeEditPolicy,
 } from '@revime/shared';
 import { api, errorMessage } from '../../../lib/client/api';
 import { DEMO } from '../../../lib/client/config';
@@ -78,6 +79,12 @@ function PublishForm() {
   const repairerId = search.get('reparateur');
   const target = useApi<RepairerProfileDto>(repairerId ? `/repairers/${repairerId}` : null);
   const [preferredTravel, setPreferredTravel] = useState<'WORKSHOP' | 'HOME' | null>(null);
+  // `?modifier=<demandeId>`: the app's « Modifier la demande » (demande/[id]/modifier.tsx), the same
+  // form prefilled, saved with `PATCH /demandes/:id`. Once an offer exists, the price terms are locked.
+  const editId = search.get('modifier');
+  const editing = useApi<DemandeDto>(editId ? `/demandes/${editId}` : null);
+  const [kept, setKept] = useState<Array<{ path: string; url: string | null }>>([]);
+  const seeded = useRef(false);
   const draftId = useMemo(() => crypto.randomUUID(), []);
 
   const [rootId, setRootId] = useState<string | null>(null);
@@ -111,6 +118,25 @@ function PublishForm() {
     }
   }, [all, search, categoryId]);
 
+  useEffect(() => {
+    const d = editing.data;
+    if (!d || seeded.current) return;
+    seeded.current = true;
+    setCategoryId(d.category.id);
+    setBrand(d.brand ?? '');
+    setModel(d.model ?? '');
+    setTitle(d.title);
+    setDescription(d.description);
+    setParts(d.parts);
+    setMode(d.mode);
+    setBudget(d.budgetCents ? String(d.budgetCents / 100) : '');
+    setPostalCode(d.postalCode);
+    setCity(d.locationLabel);
+    setKept(d.photos ?? []);
+  }, [editing.data]);
+  const policy = editing.data ? demandeEditPolicy(editing.data.status, editing.data.offerCount) : null;
+  const locked = Boolean(policy?.contractLocked);
+
   const activeRoot = rootId ?? selected?.parentId ?? null;
   const children = all.filter((c) => c.parentId === activeRoot);
 
@@ -130,7 +156,7 @@ function PublishForm() {
   function addPhotos(files: FileList | null) {
     if (!files) return;
     const next = Array.from(files)
-      .slice(0, MAX_PHOTOS - photos.length)
+      .slice(0, MAX_PHOTOS - photos.length - kept.length)
       .map((file) => ({ key: crypto.randomUUID(), file, preview: URL.createObjectURL(file) }));
     setPhotos((list) => [...list, ...next]);
   }
@@ -160,8 +186,13 @@ function PublishForm() {
         budgetCents: mode === 'BUDGET' ? Math.round(Number(budget) * 100) : undefined,
         locationLabel: city.trim(),
         postalCode,
-        photoPaths,
+        photoPaths: [...kept.map((k) => k.path), ...photoPaths],
       };
+      if (editId) {
+        await api.patch<DemandeDto>(`/demandes/${editId}`, input);
+        router.replace(`/mes-demandes/${editId}?modifiee=1`);
+        return;
+      }
       if (needsClientMode(meRef.current)) {
         // The API refuses a demande from an account in réparateur-only mode. Publishing is a
         // client action, so switch first, as the app's Paramètres would, and say so on the button.
@@ -186,12 +217,32 @@ function PublishForm() {
     else void publish();
   }
 
-  if (categories.loading) return <Loader />;
+  if (categories.loading || (editId && editing.loading)) return <Loader />;
+  if (editId && policy && !policy.canEdit) {
+    return (
+      <div className="ap-page ap-narrow">
+        <h1>Modifier la demande</h1>
+        <p className="ap-muted">Cette demande ne peut plus être modifiée : elle n’est plus ouverte aux offres.</p>
+        <Link className="ap-btn ap-btn--secondary" href={`/mes-demandes/${editId}`}>
+          Retour à la demande
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div className="ap-page ap-pubpage">
       <div className="ap-publish__head">
-        {repairerId ? (
+        {editId ? (
+          <>
+            <h1>Modifier la demande</h1>
+            <p>
+              {locked
+                ? 'Des réparateurs vous ont déjà fait une offre : la catégorie, le lieu et le prix ne peuvent plus changer. Le reste se modifie librement.'
+                : 'Corrigez ce que vous voulez, puis enregistrez. Les réparateurs voient la version à jour.'}
+            </p>
+          </>
+        ) : repairerId ? (
           <>
             <h1>Demander un devis{target.data ? ` à ${target.data.displayName}` : ''}</h1>
             <p>3 questions, environ 2 minutes. Seul ce réparateur voit votre demande et vous répond avec son prix. Gratuit et sans engagement.</p>
@@ -219,6 +270,7 @@ function PublishForm() {
                   key={r.id}
                   className="ap-chip"
                   aria-pressed={r.id === activeRoot}
+                  disabled={locked}
                   onClick={() => {
                     setRootId(r.id);
                     if (selected?.parentId !== r.id) setCategoryId('');
@@ -232,7 +284,7 @@ function PublishForm() {
               <div className="ap-options" role="radiogroup" aria-label="Catégorie">
                 {children.map((c) => (
                   <label key={c.id} className="ap-option" data-on={c.id === categoryId || undefined}>
-                    <input type="radio" name="categorie" checked={c.id === categoryId} onChange={() => setCategoryId(c.id)} />
+                    <input type="radio" name="categorie" checked={c.id === categoryId} disabled={locked} onChange={() => setCategoryId(c.id)} />
                     <CategoryIcon path={iconForLabel(c.labelFr)} size={20} />
                     {c.labelFr}
                   </label>
@@ -245,6 +297,19 @@ function PublishForm() {
                 Photos <em>facultatif, {MAX_PHOTOS} au maximum</em>
               </span>
               <div className="ap-photos">
+                {kept.map((k) => (
+                  <span key={k.path} className="ap-photo">
+                    {k.url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={k.url} alt="" />
+                    ) : (
+                      <IconCamera size={22} />
+                    )}
+                    <button type="button" aria-label="Retirer la photo" onClick={() => setKept((list) => list.filter((x) => x.path !== k.path))}>
+                      <IconClose size={14} />
+                    </button>
+                  </span>
+                ))}
                 {photos.map((p) => (
                   <span key={p.key} className="ap-photo">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -258,7 +323,7 @@ function PublishForm() {
                     </button>
                   </span>
                 ))}
-                {photos.length < MAX_PHOTOS && (
+                {photos.length + kept.length < MAX_PHOTOS && (
                   <label className="ap-photo ap-photo--add">
                     <IconCamera size={22} />
                     <span>Ajouter</span>
@@ -342,24 +407,25 @@ function PublishForm() {
                   autoComplete="postal-code"
                   maxLength={5}
                   value={postalCode}
+                  disabled={locked}
                   onChange={(e) => setPostalCode(e.target.value.replace(/\D/g, ''))}
                   placeholder="ex. 69003"
                 />
               </label>
               <label className="ap-field">
                 <span>Ville</span>
-                <input autoComplete="address-level2" value={city} onChange={(e) => setCity(e.target.value)} placeholder="ex. Lyon" maxLength={120} />
+                <input autoComplete="address-level2" value={city} disabled={locked} onChange={(e) => setCity(e.target.value)} placeholder="ex. Lyon" maxLength={120} />
               </label>
             </div>
             {show('place') && <p className="ap-error">{show('place')}</p>}
             <div className="ap-options ap-options--2" role="radiogroup" aria-label="Prix">
               <label className="ap-option ap-option--big" data-on={mode === 'OFFERS' || undefined}>
-                <input type="radio" name="mode" checked={mode === 'OFFERS'} onChange={() => setMode('OFFERS')} />
+                <input type="radio" name="mode" checked={mode === 'OFFERS'} disabled={locked} onChange={() => setMode('OFFERS')} />
                 <strong>Je reçois des offres</strong>
                 <span>Les réparateurs proposent leur prix.</span>
               </label>
               <label className="ap-option ap-option--big" data-on={mode === 'BUDGET' || undefined}>
-                <input type="radio" name="mode" checked={mode === 'BUDGET'} onChange={() => setMode('BUDGET')} />
+                <input type="radio" name="mode" checked={mode === 'BUDGET'} disabled={locked} onChange={() => setMode('BUDGET')} />
                 <strong>J’ai un budget</strong>
                 <span>Vous indiquez un montant maximum.</span>
               </label>
@@ -367,7 +433,7 @@ function PublishForm() {
             {mode === 'BUDGET' && (
               <label className="ap-field ap-field--short">
                 <span>Votre budget (€)</span>
-                <input inputMode="decimal" value={budget} onChange={(e) => setBudget(e.target.value.replace(',', '.'))} placeholder="ex. 80" />
+                <input inputMode="decimal" value={budget} disabled={locked} onChange={(e) => setBudget(e.target.value.replace(',', '.'))} placeholder="ex. 80" />
               </label>
             )}
             {show('budget') && <p className="ap-error">{show('budget')}</p>}
@@ -378,9 +444,9 @@ function PublishForm() {
           <p className="ap-publish__label">Ce que verront les réparateurs</p>
           <div className="ap-preview">
             <span className="ap-tile__media">
-              {photos[0] ? (
+              {kept[0]?.url || photos[0] ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={photos[0].preview} alt="" />
+                <img src={kept[0]?.url ?? photos[0]?.preview} alt="" />
               ) : (
                 <span className="ap-tile__icon">
                   <CategoryIcon path={iconForLabel(selected?.labelFr ?? '')} size={30} />
@@ -405,7 +471,7 @@ function PublishForm() {
             </p>
           )}
           <button className="ap-btn ap-btn--primary ap-btn--block ap-publish__go" disabled={sending}>
-            {sending ? 'Envoi…' : repairerId ? 'Envoyer ma demande de devis' : 'Publier ma demande'}
+            {sending ? 'Envoi…' : editId ? 'Enregistrer les modifications' : repairerId ? 'Envoyer ma demande de devis' : 'Publier ma demande'}
           </button>
           {status === 'out' && <p className="ap-hint ap-center-text">On vous demandera de vous connecter juste avant.</p>}
           {needsClientMode(me) && (
