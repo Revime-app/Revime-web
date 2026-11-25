@@ -1,12 +1,10 @@
-# Render blueprint for the Revime API.
+# Render blueprint for REVIME: the API (shared by the mobile app and the website) and the website.
 #
-# Live service: srv-d9k1g6m417fc73dv6pjg (workspace ElaunchIT), created with the
-# Render CLI using settings matching this file. Keep the two in step: this file is
-# the reviewable record of the deploy.
-#
-# Windows gotcha, learned the hard way: creating this through the CLI under Git Bash
-# turned `--health-check-path /api/v1/health` into `C:/Program Files/Git/api/v1/health`
-# via MSYS path conversion. Prefix such commands with MSYS_NO_PATHCONV=1.
+# 25/11/2026: REVIME now deploys from this copy (Revime-app/Revime-web) on its own Render
+# workspace, with a NEW Supabase database (the app was not yet published, so nothing to carry
+# over). The original repository (Revime-app/revime) is never changed or deployed from here.
+# The app keeps calling https://api.revime.fr: pointing that DNS name at this service is what
+# makes the app and the site share one API. Step-by-step guide: docs/MISE-EN-LIGNE.md.
 #
 # Commands run from the repository root (not apps/api) so that npm workspaces
 # resolves and hoists dependencies once. `-w @revime/api` scopes the work to
@@ -42,11 +40,13 @@ services:
     # roughly a minute, so UPGRADE TO starter BEFORE ANY CLIENT DEMO - on a phone a
     # cold start looks like a broken app, not a waking server. The proposal already
     # disclosed ~16 EUR/month for the API, so the upgrade is within what was agreed.
-    plan: free
+    plan: starter
     region: frankfurt # EU, alongside the Paris database
     branch: main
     autoDeploy: true
     healthCheckPath: /api/v1/health
+    domains:
+      - api.revime.fr
     # Documentation-only pushes must not redeploy the API. PROJECT_ROADMAP.md is
     # updated at the end of every session and each push was costing a full build,
     # restart and cold start for a file the runtime never reads.
@@ -260,6 +260,9 @@ services:
         sync: false
       - key: SUPABASE_SERVICE_ROLE_KEY
         sync: false
+      # The website's addresses, trusted by Better Auth and used for its return links.
+      - key: SITE_ORIGIN
+        value: https://revime.fr,https://www.revime.fr
       # ═══════════════════════════════════════════════════════════════════════════
       # LIVRAISON BOXTAL (spec docs/superpowers/specs/2026-09-04-livraison-boxtal-design.md §12).
       # ✅ FLIPPED TO `boxtal` ON THE LIVE SERVICE 2026-09-15 06:49:18 UTC, through the Render MCP on
@@ -304,7 +307,7 @@ services:
       # payment from build 7 buys real labels on the client's Boxtal account. Never drive one unprompted.
       # ═══════════════════════════════════════════════════════════════════════════
       - key: SHIPPING_DRIVER
-        value: boxtal
+        value: manual # Boxtal account not available yet: flat parcel fee, as the app handles
       - key: SHIPPING_LABEL_BUCKET
         value: shipping-labels
       # ═══════════════════════════════════════════════════════════════════════════
@@ -570,13 +573,15 @@ services:
       # e-mail does not retro-promote anybody. Recorded because gate.ts's own note says a
       # premise nobody re-checks is how a stale comment becomes a stale decision.
       # ═══════════════════════════════════════════════════════════════════════════
+      # 25/11/2026, new deployment: payments on, in Stripe TEST mode first (test keys in the
+      # dashboard), then live keys once docs/MISE-EN-LIGNE.md step 8 passes.
       - key: PAYMENTS_ENABLED
-        value: "false"
+        value: "true"
       # fake, not stripe. The gateway factories need BOTH this and a secret key, so a
       # stray value here cannot start charging cards or creating connected accounts on
       # its own. Every test in the suite runs against the fake and reaches no network.
       - key: STRIPE_DRIVER
-        value: fake
+        value: stripe
       # Accept-and-pay P2. Ships FALSE. It gates the WHOLE réparateur-onboarding
       # subsystem - Stripe Identity as well as Connect payouts - despite its narrower
       # name. The two are one journey and must move together: a réparateur who
@@ -595,8 +600,10 @@ services:
       #       check, which our own code requests with require_matching_selfie,
       #   (d) a build carries the two Profil cards - otherwise a réparateur is told to
       #       verify his identity by a screen he does not have.
+      # 25/11/2026: on, so réparateurs can set up payouts from the site and the app. The (c)
+      # point above (selfie check and GDPR) must be settled before switching Stripe to LIVE.
       - key: CONNECT_ENABLED
-        value: "false"
+        value: "true"
       # Set in the Render dashboard / API, never committed:
       #   STRIPE_SECRET_KEY               the mode-appropriate secret or restricted key
       #   STRIPE_WEBHOOK_SECRET           P1's PLATFORM endpoint signing secret
@@ -776,9 +783,26 @@ services:
       # empty fake bucket four times a day. Full pre-flip checklist in PROJECT_ROADMAP.md
       # under the 2026-08-20 demande photos entry -- kept there, not duplicated here,
       # because the CRON_SECRET comment above is what a duplicated count looks like later.
-      - key: STORAGE_DRIVER
-        sync: false
-      - key: SUPABASE_URL
-        sync: false
-      - key: SUPABASE_SERVICE_ROLE_KEY
-        sync: false
+
+  # The website (Next.js). It calls the API through its own /api/* (next.config.ts rewrites), so
+  # the session cookie is first-party on revime.fr.
+  - type: web
+    name: revime-site
+    runtime: node
+    plan: starter
+    region: frankfurt
+    branch: main
+    autoDeploy: true
+    healthCheckPath: /
+    domains:
+      - revime.fr
+      - www.revime.fr
+    buildCommand: npm ci --include=dev && npm run build -w @revime/tokens && npm run build -w @revime/shared && npm run build -w @revime/site
+    startCommand: npm run start -w @revime/site
+    envVars:
+      - key: NODE_VERSION
+        value: "24"
+      - key: API_URL
+        value: https://api.revime.fr
+      - key: NEXT_PUBLIC_SITE_URL
+        value: https://revime.fr

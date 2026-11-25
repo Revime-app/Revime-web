@@ -27,7 +27,7 @@ async function call<T>(path: string, init?: RequestInit): Promise<T> {
   if (DEMO) {
     const method = init?.method ?? 'GET';
     if (method === 'GET') return demoGet<T>(path);
-    return demoPost<T>(path, init?.body ? JSON.parse(String(init.body)) : undefined);
+    return demoPost<T>(path, init?.body ? JSON.parse(String(init.body)) : undefined, method);
   }
   const res = await fetch(`${BASE}${path}`, {
     ...init,
@@ -52,6 +52,8 @@ export const api = {
   get: <T>(path: string) => call<T>(path),
   post: <T>(path: string, body: unknown) => call<T>(path, { method: 'POST', body: JSON.stringify(body) }),
   patch: <T>(path: string, body: unknown) => call<T>(path, { method: 'PATCH', body: JSON.stringify(body) }),
+  put: <T>(path: string, body?: unknown) => call<T>(path, { method: 'PUT', body: body === undefined ? undefined : JSON.stringify(body) }),
+  del: <T = null>(path: string) => call<T>(path, { method: 'DELETE' }),
 };
 
 /** A French message for anything thrown by a call. */

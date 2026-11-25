@@ -65,6 +65,7 @@ describe('sitemap.xml', () => {
     const urls = entries.map((e) => e.url);
     expect(urls).toEqual([
       SITE_URL,
+      ...['/comment-ca-marche', '/protection-revime', '/reparation', '/devenir-reparateur', '/qui-sommes-nous', '/aide', '/reparateurs', '/demandes'].map((p) => `${SITE_URL}${p}`),
       ...PUBLIC_DOCUMENTS.map((d) => `${SITE_URL}/${d.slug}`),
       `${SITE_URL}/suppression-compte`,
     ]);
@@ -133,8 +134,14 @@ describe('JSON-LD', () => {
 
 describe('the signed-in area stays out of search engines', () => {
   it('blocks every signed-in path in robots.txt', () => {
-    for (const path of ['/accueil', '/publier', '/mes-demandes', '/demande/', '/messages', '/profil', '/connexion']) {
+    for (const path of ['/publier', '/mes-demandes', '/messages', '/profil', '/connexion']) {
       expect(PRIVATE_PATHS).toContain(path);
+    }
+  });
+
+  it('leaves the pages a visitor browses open to search engines', () => {
+    for (const path of ['/reparateurs', '/demandes']) {
+      expect(PRIVATE_PATHS.some((p) => path.startsWith(p.replace(/\/$/, '')))).toBe(false);
     }
   });
 });

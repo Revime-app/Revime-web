@@ -28,7 +28,7 @@ export class ConnectService {
    * minutes, and Stripe's own documented recovery for a stale one is to mint
    * another. There is nothing to protect.
    */
-  async startOnboarding(userId: string): Promise<ConnectOnboardingResponse> {
+  async startOnboarding(userId: string, surface: 'app' | 'web' = 'app'): Promise<ConnectOnboardingResponse> {
     if (!isConnectEnabled()) {
       throw new AppException('UNPROCESSABLE_ENTITY', CONNECT_OFF);
     }
@@ -53,8 +53,10 @@ export class ConnectService {
       // invitation to start reading it. `refresh` genuinely does read `u`, because it
       // must mint a link for a specific account, so it keeps it. The Identity sibling
       // takes no parameter either.
-      returnUrl: `${base}/api/v1/connect/return`,
-      refreshUrl: `${base}/api/v1/connect/refresh`,
+      // A réparateur who started on the website comes back to the website (`/connect/return-web`),
+      // the app's own flow is unchanged. Both routes stay static and read nothing.
+      returnUrl: surface === 'web' ? `${base}/api/v1/connect/return-web` : `${base}/api/v1/connect/return`,
+      refreshUrl: surface === 'web' ? `${base}/api/v1/connect/return-web` : `${base}/api/v1/connect/refresh`,
     });
 
     return {

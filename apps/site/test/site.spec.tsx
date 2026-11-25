@@ -14,7 +14,7 @@ import { LEGAL_DOCUMENTS } from '../../mobile/src/lib/legal';
 import { PUBLIC_DOCUMENTS, findDocument } from '../lib/documents';
 import LegalDocumentPage, { generateStaticParams, dynamicParams } from '../app/(public)/[slug]/page';
 import AccountDeletionPage from '../app/(public)/suppression-compte/page';
-import HomePage from '../app/(public)/page';
+import { SiteFooter } from '../components/app/SiteFooter';
 
 /** Rendered markup reduced to the text a reader sees, whitespace collapsed. */
 function visibleText(html: string): string {
@@ -117,8 +117,8 @@ describe('the account deletion page (Google Play account-deletion requirement)',
   });
 });
 
-describe('the home page', () => {
-  const html = renderToStaticMarkup(<HomePage />);
+describe('the footer on every page of the site', () => {
+  const html = renderToStaticMarkup(<SiteFooter />);
 
   it('links to every document and to the deletion page', () => {
     for (const d of LEGAL_DOCUMENTS) {
@@ -136,18 +136,22 @@ describe('what the site does not serve', () => {
   /*
    * 24/11/2026: the site is becoming REVIME's web application (plan d'action SEO et site). It now
    * serves robots.txt and sitemap.xml and proxies /api/* to the API (next.config.ts), and will gain
-   * the public SEO pages and the signed-in area phase by phase. The public pages sit in (public),
-   * the signed-in area in (espace), sign-in in connexion. Each new top-level route is added
+   * the public SEO pages and the signed-in area phase by phase. The reading pages (documents,
+   * deletion) sit in (public); everything that looks like the app (home, réparateurs, demandes,
+   * publier, the personal pages) in (app); sign-in in connexion. Each new top-level route is added
    * to this list on purpose, so nothing appears by accident. The admin stays a separate app.
    */
   it('has only the routes added on purpose, and never the admin', () => {
     const entries = readdirSync(join(__dirname, '../app')).sort();
     expect(entries).toEqual(
       [
-        '(espace)',
+        '(app)',
         '(public)',
+        'app.css',
         'connexion',
-        'espace.css',
+        'inscription',
+        'mot-de-passe-oublie',
+        'nouveau-mot-de-passe',
         'globals.css',
         'layout.tsx',
         'not-found.tsx',
@@ -157,10 +161,10 @@ describe('what the site does not serve', () => {
     );
     expect(entries).not.toContain('admin');
     expect(readdirSync(join(__dirname, '../app/(public)')).sort()).toEqual(
-      ['[slug]', 'layout.tsx', 'page.tsx', 'suppression-compte'].sort(),
+      ['[slug]', 'layout.tsx', 'suppression-compte'].sort(),
     );
-    expect(readdirSync(join(__dirname, '../app/(espace)')).sort()).toEqual(
-      ['accueil', 'demande', 'layout.tsx', 'mes-demandes', 'messages', 'profil', 'publier'].sort(),
+    expect(readdirSync(join(__dirname, '../app/(app)')).sort()).toEqual(
+      ['(compte)', 'HomeIslands.tsx', 'aide', 'comment-ca-marche', 'demandes', 'devenir-reparateur', 'layout.tsx', 'loading.tsx', 'messages', 'page.tsx', 'protection-revime', 'publier', 'qui-sommes-nous', 'reparateurs', 'reparation', 'verification'].sort(),
     );
   });
 });

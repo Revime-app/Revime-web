@@ -37,8 +37,9 @@ export async function isReviewUser(prisma: PrismaService, userId: string): Promi
 }
 
 /** The same seal, as a filter on a relation to the viewer's counterpart (`author`, `repairer`, `user`…). */
-export async function viewerSideWhere(prisma: PrismaService, viewerUserId: string): Promise<Prisma.UserWhereInput> {
-  return sideUserWhere(await isReviewUser(prisma, viewerUserId));
+export async function viewerSideWhere(prisma: PrismaService, viewerUserId: string | null): Promise<Prisma.UserWhereInput> {
+  // 24/11/2026: a signed-out visitor of the website is never a store-review account.
+  return sideUserWhere(viewerUserId === null ? false : await isReviewUser(prisma, viewerUserId));
 }
 
 /**
