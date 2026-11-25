@@ -1,4 +1,13 @@
-import type { CategoryDto, DemandeDto, DemandeListItem, OfferDto } from '@revime/shared';
+import type {
+  CategoryDto,
+  DemandeDto,
+  DemandeListItem,
+  DirectoryCardDto,
+  OfferDto,
+  PublicDemandeView,
+  RepairerProfileDto,
+  ReviewDto,
+} from '@revime/shared';
 
 /**
  * Made-up data for demo mode (config.ts). Shapes follow the API's DTOs in @revime/shared so the
@@ -178,6 +187,107 @@ function detail(id: string): DemandeDto | undefined {
   } as unknown as DemandeDto;
 }
 
+
+const cid = (slug: string) => DEMO_CATEGORIES.find((c) => c.slug === slug)!;
+const pub = (
+  id: string,
+  title: string,
+  slug: string,
+  locationLabel: string,
+  hoursAgo: number,
+  description: string,
+  budgetCents: number | null = null,
+): PublicDemandeView => ({
+  id,
+  title,
+  description,
+  photos: [],
+  category: { id: cid(slug).id, labelFr: cid(slug).labelFr },
+  budgetCents,
+  locationLabel,
+  createdAt: new Date(Date.now() - hoursAgo * 3_600_000).toISOString(),
+});
+
+const browse: PublicDemandeView[] = [
+  pub('pub-1', 'Batterie de MacBook Air qui ne tient plus', 'ordinateur', 'Lyon 7e', 2, 'MacBook Air 2020, la batterie tient 40 minutes. Je cherche un remplacement avec une pièce de qualité.', 12000),
+  pub('pub-2', 'Trottinette Xiaomi qui ne démarre plus', 'trottinettes-electriques', 'Villeurbanne', 5, 'Xiaomi Pro 2, plus rien ne s’allume depuis la pluie de mardi. Le chargeur clignote vert.'),
+  pub('pub-3', 'Ressemeler des bottines en cuir', 'chaussures', 'Lyon 1er', 9, 'Bottines en cuir marron, semelle usée au talon. J’aimerais les garder encore quelques années.', 6000),
+  pub('pub-4', 'Manette PS5 qui dérive', 'console', 'Caluire-et-Cuire', 20, 'Le joystick gauche bouge tout seul. Manette achetée il y a deux ans.'),
+  pub('pub-5', 'Montre automatique qui retarde', 'montres-bijoux', 'Lyon 6e', 26, 'Elle perd environ 5 minutes par jour. Révision ou réglage ?'),
+  pub('pub-6', 'Chaise en bois à recoller', 'meubles', 'Écully', 30, 'Chaise ancienne, un pied se décolle et le dossier bouge.', 4000),
+  pub('pub-7', 'Cafetière Nespresso qui fuit', 'petit-electromenager', 'Lyon 8e', 44, 'De l’eau coule sous la machine pendant le café. Modèle Vertuo.'),
+  pub('pub-8', 'Vélo : freins qui frottent', 'velos', 'Lyon 4e', 50, 'Les freins à disque frottent en permanence, roue avant surtout.'),
+];
+
+const card = (
+  userId: string,
+  displayName: string,
+  serviceAreaLabel: string,
+  rating: number | null,
+  reviewCount: number,
+  verifiedBadge: DirectoryCardDto['verifiedBadge'],
+  distanceKm: number | null,
+): DirectoryCardDto => ({
+  userId,
+  displayName,
+  serviceAreaLabel,
+  username: displayName.toLowerCase().replace(/[^a-z]+/g, '.'),
+  verifiedBadge,
+  rating,
+  reviewCount,
+  avatarUrl: null,
+  distanceKm,
+});
+
+const repairers: DirectoryCardDto[] = [
+  card('demo-rep-1', 'Atelier Phone Lyon', 'Lyon et alentours', 4.9, 37, 'BUSINESS', 1.8),
+  card('demo-rep-3', 'Répar’Express Part-Dieu', 'Lyon 3e', 4.8, 64, 'BUSINESS', 2.6),
+  card('demo-rep-2', 'Karim R.', 'Lyon, Villeurbanne', 4.7, 12, 'IDENTITY', 3.4),
+  card('demo-rep-4', 'Cycles Croix-Rousse', 'Lyon 4e', 4.9, 51, 'BUSINESS', 4.1),
+  card('demo-rep-5', 'Cordonnerie des Terreaux', 'Lyon 1er', 4.6, 23, 'BUSINESS', 2.2),
+  card('demo-rep-6', 'Sofia M.', 'Villeurbanne', 5, 6, 'IDENTITY', 5.3),
+  card('demo-rep-7', 'ÉlectroDépannage 69', 'Métropole de Lyon', 4.5, 19, 'BUSINESS', 6.8),
+  card('demo-rep-8', 'Théo L.', 'Caluire-et-Cuire', null, 0, 'IDENTITY', 7.5),
+];
+
+const SPECIALITIES: Record<string, string[]> = {
+  'demo-rep-1': ['Smartphones', 'Ordinateurs', 'Consoles'],
+  'demo-rep-3': ['Smartphones', 'Ordinateurs'],
+  'demo-rep-2': ['Smartphones', 'Télévisions'],
+  'demo-rep-4': ['Vélos', 'Trottinettes électriques'],
+  'demo-rep-5': ['Chaussures'],
+  'demo-rep-6': ['Montres & bijoux'],
+  'demo-rep-7': ['Petit électroménager'],
+  'demo-rep-8': ['Meubles'],
+};
+
+function profile(userId: string): RepairerProfileDto | undefined {
+  const c = repairers.find((r) => r.userId === userId);
+  if (!c) return undefined;
+  return {
+    ...c,
+    bannerUrl: null,
+    serviceRadiusKm: 15,
+    availability: [1, 2, 3, 4, 5, 6, 0].map((dayOfWeek) => ({
+      dayOfWeek,
+      closed: dayOfWeek === 0,
+      opensAt: dayOfWeek === 0 ? null : 9 * 60,
+      closesAt: dayOfWeek === 0 ? null : dayOfWeek === 6 ? 13 * 60 : 19 * 60,
+    })),
+    bio:
+      'Réparateur depuis plus de dix ans. Diagnostic gratuit, pièces de qualité et garantie sur chaque intervention. Je vous explique toujours ce que je fais avant de commencer.',
+    repairCount: c.reviewCount * 3,
+    repairerSince: new Date(Date.now() - 400 * DAY).toISOString(),
+    specialities: SPECIALITIES[userId] ?? [],
+  } as unknown as RepairerProfileDto;
+}
+
+const reviews: ReviewDto[] = [
+  { id: 'rv1', authorName: 'Camille D.', rating: 5, qualityRating: 5, delayRating: 5, communicationRating: 5, comment: 'Écran changé en une heure, comme neuf. Très pro et de bon conseil.', createdAt: ago(6) },
+  { id: 'rv2', authorName: 'Julien P.', rating: 5, qualityRating: 5, delayRating: 4, communicationRating: 5, comment: 'Prix annoncé respecté, explications claires. Je recommande.', createdAt: ago(19) },
+  { id: 'rv3', authorName: 'Nadia B.', rating: 4, qualityRating: 4, delayRating: 4, communicationRating: 5, comment: 'Bonne réparation, un jour de plus que prévu mais j’ai été prévenue.', createdAt: ago(33) },
+] as unknown as ReviewDto[];
+
 const me = {
   id: 'demo-user',
   email: 'lea@example.com',
@@ -196,6 +306,34 @@ export async function demoGet<T>(path: string): Promise<T> {
   if (p === '/users/me') return me as T;
   if (p === '/categories') return DEMO_CATEGORIES as T;
   if (p === '/demandes/mine') return demandes as T;
+  const q = new URLSearchParams(path.split('?')[1] ?? '');
+  const inCategory = (categoryId: string | null, label: string) => {
+    if (!categoryId) return true;
+    const c = DEMO_CATEGORIES.find((x) => x.id === categoryId);
+    if (!c) return true;
+    if (c.parentId === null) return DEMO_CATEGORIES.some((x) => x.parentId === c.id && x.labelFr === label);
+    return c.labelFr === label;
+  };
+  const text = (q.get('q') ?? '').toLowerCase();
+  if (p === '/demandes/browse') {
+    return browse.filter(
+      (d) => inCategory(q.get('categoryId'), d.category.labelFr) && (!text || `${d.title} ${d.description}`.toLowerCase().includes(text)),
+    ) as T;
+  }
+  if (p === '/repairers') {
+    return repairers.filter(
+      (r) =>
+        (!q.get('categoryId') || (SPECIALITIES[r.userId] ?? []).some((l) => inCategory(q.get('categoryId'), l))) &&
+        (!text || `${r.displayName} ${(SPECIALITIES[r.userId] ?? []).join(' ')}`.toLowerCase().includes(text)),
+    ) as T;
+  }
+  const reviewsMatch = p.match(/^\/repairers\/([^/]+)\/reviews$/);
+  if (reviewsMatch) return (profile(reviewsMatch[1]!)?.reviewCount ? reviews : []) as T;
+  const profileMatch = p.match(/^\/repairers\/([^/]+)$/);
+  if (profileMatch) {
+    const pr = profile(profileMatch[1]!);
+    if (pr) return pr as T;
+  }
   const offersMatch = p.match(/^\/demandes\/([^/]+)\/offers$/);
   if (offersMatch) return (offersMatch[1] === 'demo-ecran' ? offers : []) as T;
   const detailMatch = p.match(/^\/demandes\/([^/]+)$/);

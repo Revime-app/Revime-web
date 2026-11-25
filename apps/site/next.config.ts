@@ -12,6 +12,13 @@ const config: NextConfig = {
   // AI crawlers do not run JavaScript: give them complete <head> metadata (lib/bots.ts).
   htmlLimitedBots: HTML_LIMITED_BOTS,
   poweredByHeader: false,
+  // Addresses of the first web version (24/11/2026), kept working.
+  async redirects() {
+    return [
+      { source: '/accueil', destination: '/', permanent: true },
+      { source: '/demande/:id', destination: '/mes-demandes/:id', permanent: true },
+    ];
+  },
   async rewrites() {
     return [{ source: '/api/:path*', destination: `${API_URL}/api/:path*` }];
   },

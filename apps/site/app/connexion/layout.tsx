@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
-import '../espace.css';
+import { SessionProvider } from '../../lib/client/session';
+import '../app.css';
 
 export const metadata: Metadata = {
   title: 'Connexion',
@@ -7,5 +8,5 @@ export const metadata: Metadata = {
 };
 
 export default function ConnexionLayout({ children }: { children: React.ReactNode }) {
-  return children;
+  return <SessionProvider>{children}</SessionProvider>;
 }

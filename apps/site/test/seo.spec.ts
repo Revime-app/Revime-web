@@ -133,8 +133,14 @@ describe('JSON-LD', () => {
 
 describe('the signed-in area stays out of search engines', () => {
   it('blocks every signed-in path in robots.txt', () => {
-    for (const path of ['/accueil', '/publier', '/mes-demandes', '/demande/', '/messages', '/profil', '/connexion']) {
+    for (const path of ['/publier', '/mes-demandes', '/messages', '/profil', '/connexion']) {
       expect(PRIVATE_PATHS).toContain(path);
+    }
+  });
+
+  it('leaves the pages a visitor browses open to search engines', () => {
+    for (const path of ['/reparateurs', '/demandes']) {
+      expect(PRIVATE_PATHS.some((p) => path.startsWith(p.replace(/\/$/, '')))).toBe(false);
     }
   });
 });
