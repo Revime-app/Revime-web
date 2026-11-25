@@ -153,7 +153,27 @@ export function HomePersonal({ slot }: { slot: 'greeting' | 'active' }) {
     const first = me.firstName?.trim();
     return <p className="ap-eyebrow">{first ? `Bonjour ${first}` : 'Bonjour'}</p>;
   }
+  if (me.profile.activeMode === 'REPAIRER') return <ProHome />;
   return <ActiveDemande />;
+}
+
+/**
+ * Réparateur mode on the site, for now: the demandes of the quartier are here, the rest (sending
+ * offers, propositions, revenus) is in the app with the same account. Said once, in Bleu Ink.
+ */
+function ProHome() {
+  return (
+    <section className="ap-todo ap-todo--pro" aria-labelledby="h-pro-home">
+      <div>
+        <p className="ap-todo__eb" id="h-pro-home">
+          Mode réparateur
+        </p>
+        <strong>Les demandes de votre quartier vous attendent</strong>
+        <span>Parcourez-les ici. Pour envoyer une offre et suivre vos revenus, utilisez l’appli REVIME avec le même compte.</span>
+      </div>
+      <Link href="/demandes">Voir les demandes</Link>
+    </section>
+  );
 }
 
 export function TopRepairers() {

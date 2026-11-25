@@ -65,7 +65,7 @@ describe('sitemap.xml', () => {
     const urls = entries.map((e) => e.url);
     expect(urls).toEqual([
       SITE_URL,
-      ...['/comment-ca-marche', '/protection-revime', '/devenir-reparateur', '/qui-sommes-nous', '/aide', '/reparateurs', '/demandes'].map((p) => `${SITE_URL}${p}`),
+      ...['/comment-ca-marche', '/protection-revime', '/reparation', '/devenir-reparateur', '/qui-sommes-nous', '/aide', '/reparateurs', '/demandes'].map((p) => `${SITE_URL}${p}`),
       ...PUBLIC_DOCUMENTS.map((d) => `${SITE_URL}/${d.slug}`),
       `${SITE_URL}/suppression-compte`,
     ]);

@@ -3340,3 +3340,32 @@ body {
   font-size: 15.5px;
   line-height: 1.5;
 }
+.ap-offer__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.ap-offer__tags em {
+  font-style: normal;
+  font-size: 13px;
+  font-weight: 700;
+  color: #067647;
+  background: var(--green-soft, #ecfdf3);
+  padding: 4px 9px;
+  border-radius: 8px;
+}
+.ap-family {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.ap-family .ap-irow {
+  margin-top: auto;
+  gap: 18px;
+}
+.ap-todo--pro {
+  background: var(--navy);
+}
+.ap-todo--pro a {
+  color: var(--navy);
+}

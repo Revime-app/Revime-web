@@ -115,6 +115,9 @@ function CompareTable({ offers, chosen, onChoose }: { offers: OfferDto[]; chosen
 /** Phone: one card per offer, tap to choose. */
 function OfferCards({ offers, chosen, onChoose }: { offers: OfferDto[]; chosen: string | null; onChoose: (o: OfferDto) => void }) {
   const cheapest = Math.min(...offers.map((o) => o.priceCents));
+  const fastest = Math.min(...offers.map((o) => o.delayHours));
+  const longest = Math.max(...offers.map((o) => warrantyMonths(o.warrantyLabel)));
+  const several = offers.length > 1;
   return (
     <div className="ap-stack ap-offercards">
       {offers.map((o) => (
@@ -134,9 +137,15 @@ function OfferCards({ offers, chosen, onChoose }: { offers: OfferDto[]; chosen: 
             </span>
             <span className="ap-offer__price">
               {euroFmt(o.priceCents)}
-              {o.priceCents === cheapest && offers.length > 1 && <em>Le moins cher</em>}
             </span>
           </span>
+          {several && (
+            <span className="ap-offer__tags">
+              {o.priceCents === cheapest && <em>Le moins cher</em>}
+              {o.delayHours === fastest && <em>Le plus rapide</em>}
+              {longest > 0 && warrantyMonths(o.warrantyLabel) === longest && <em>Garantie la plus longue</em>}
+            </span>
+          )}
           <span className="ap-offer__facts">
             <span>
               <small>Délai</small>

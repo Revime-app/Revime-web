@@ -19,6 +19,7 @@ export function SiteFooter() {
           <ul>
             <li><Link href="/comment-ca-marche">Comment ça marche</Link></li>
             <li><Link href="/protection-revime">Protection REVIME</Link></li>
+            <li><Link href="/reparation">Tout ce qu’on répare</Link></li>
             <li><Link href="/reparateurs">Trouver un réparateur</Link></li>
             <li><Link href="/devenir-reparateur">Devenir réparateur</Link></li>
             <li><Link href="/qui-sommes-nous">Qui sommes-nous</Link></li>
