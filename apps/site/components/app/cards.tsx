@@ -41,17 +41,18 @@ export function DemandeTile({ d, onOpen }: { d: PublicDemandeView; onOpen?: () =
   );
 }
 
-/** One réparateur in a list: who, how trusted, where. */
+/** One réparateur in a list: his face first, then how trusted he is and where he works. */
 export function RepairerCard({ r }: { r: DirectoryCardDto }) {
   return (
     <Link href={`/reparateurs/${r.userId}`} className="ap-rcard">
-      <span className="ap-avatar ap-avatar--lg" aria-hidden="true">
+      <span className="ap-rcard__cover" aria-hidden="true">
         {r.avatarUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={r.avatarUrl} alt="" />
+          <img src={r.avatarUrl} alt="" loading="lazy" />
         ) : (
-          initials(r.displayName)
+          <span className="ap-rcard__initials">{initials(r.displayName)}</span>
         )}
+        {r.distanceKm !== null && <span className="ap-tile__budget">{r.distanceKm.toString().replace('.', ',')} km</span>}
       </span>
       <span className="ap-rcard__body">
         <span className="ap-rcard__name">{r.displayName}</span>
@@ -63,7 +64,6 @@ export function RepairerCard({ r }: { r: DirectoryCardDto }) {
         )}
         <span className="ap-rcard__area">
           <IconPin size={14} /> {r.serviceAreaLabel ?? 'Zone non précisée'}
-          {r.distanceKm !== null && ` · ${r.distanceKm.toString().replace('.', ',')} km`}
         </span>
       </span>
     </Link>

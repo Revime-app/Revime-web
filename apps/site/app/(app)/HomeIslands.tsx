@@ -72,17 +72,17 @@ export function HomePersonal({ slot }: { slot: 'greeting' | 'active' }) {
 
 export function TopRepairers() {
   const repairers = useApi<DirectoryCardDto[]>('/repairers?sort=note');
-  const list = (repairers.data ?? []).slice(0, 3);
+  const list = (repairers.data ?? []).slice(0, 10);
   if (list.length === 0) return null;
   return (
     <section className="ap-section" aria-labelledby="h-rep">
       <div className="ap-section__head">
-        <h2 id="h-rep">Réparateurs bien notés</h2>
+        <h2 id="h-rep">Réparateurs près de chez vous</h2>
         <Link href="/reparateurs" className="ap-more">
           Voir tout
         </Link>
       </div>
-      <div className="ap-grid ap-grid--rep">
+      <div className="ap-rail ap-rail--rep">
         {list.map((r) => (
           <RepairerCard key={r.userId} r={r} />
         ))}
@@ -93,17 +93,17 @@ export function TopRepairers() {
 
 export function RecentDemandes() {
   const demandes = useApi<PublicDemandeView[]>('/demandes/browse');
-  const list = (demandes.data ?? []).slice(0, 4);
+  const list = (demandes.data ?? []).slice(0, 12);
   if (list.length === 0) return null;
   return (
     <section className="ap-section" aria-labelledby="h-dem">
       <div className="ap-section__head">
-        <h2 id="h-dem">Demandes récentes</h2>
+        <h2 id="h-dem">Demandes près de chez vous</h2>
         <Link href="/demandes" className="ap-more">
           Voir tout
         </Link>
       </div>
-      <div className="ap-grid ap-grid--tiles">
+      <div className="ap-rail">
         {list.map((d) => (
           <DemandeTile key={d.id} d={d} />
         ))}

@@ -54,6 +54,10 @@ export default function HomePage() {
 
       <HomePersonal slot="active" />
 
+      <RecentDemandes />
+
+      <TopRepairers />
+
       <section className="ap-section" aria-labelledby="h-cat">
         <div className="ap-section__head">
           <h2 id="h-cat">Catégories</h2>
@@ -94,8 +98,6 @@ export default function HomePage() {
         </ol>
       </section>
 
-      <TopRepairers />
-
       <div className="ap-trust">
         <IconShieldCheck size={24} className="ap-trust__icon" />
         <span>
@@ -103,8 +105,6 @@ export default function HomePage() {
           <span>Identité et entreprise contrôlées. Ici, la réputation compte plus que le statut.</span>
         </span>
       </div>
-
-      <RecentDemandes />
     </div>
   );
 }

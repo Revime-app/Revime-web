@@ -1117,7 +1117,7 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 .ap-grid--rep {
-  grid-template-columns: 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 @media (min-width: 720px) {
   .ap-grid--tiles {
@@ -1125,7 +1125,8 @@
     gap: 16px;
   }
   .ap-grid--rep {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
   }
 }
 @media (min-width: 1100px) {
@@ -1133,7 +1134,7 @@
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
   .ap-grid--rep {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
 .ap-tile {
@@ -1215,22 +1216,48 @@
 }
 .ap-rcard {
   display: flex;
-  gap: 14px;
-  align-items: flex-start;
-  padding: 16px;
-  box-shadow: var(--shadow);
+  flex-direction: column;
   border-radius: var(--r-card);
   background: var(--white);
+  box-shadow: var(--shadow);
+  overflow: hidden;
   transition: box-shadow 0.15s;
 }
 .ap-rcard:hover {
   box-shadow: var(--shadow-hover);
+}
+.ap-rcard__cover {
+  position: relative;
+  display: grid;
+  place-items: center;
+  aspect-ratio: 4 / 3;
+  background: linear-gradient(135deg, var(--red-soft), #fff6f7);
+}
+.ap-rcard__cover img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.ap-rcard__initials {
+  display: grid;
+  place-items: center;
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  background: var(--white);
+  color: var(--red-deep);
+  font-weight: 700;
+  font-size: 26px;
+  box-shadow: var(--shadow);
 }
 .ap-rcard__body {
   min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 4px;
+  padding: 12px 14px 14px;
 }
 .ap-rcard__name {
   font-weight: 700;
@@ -2250,5 +2277,47 @@
   }
   .ap-auth__side span svg {
     color: var(--red);
+  }
+}
+
+/* ---------- Rails: rows of real listings, like a classifieds home ---------- */
+.ap-rail {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 62%;
+  gap: 12px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scroll-padding-inline: 16px;
+  scrollbar-width: none;
+  margin: 0 -16px;
+  padding: 6px 16px 18px;
+}
+.ap-rail::-webkit-scrollbar {
+  display: none;
+}
+.ap-rail > * {
+  scroll-snap-align: start;
+}
+.ap-rail--rep {
+  grid-auto-columns: 62%;
+}
+@media (min-width: 720px) {
+  .ap-rail {
+    grid-auto-columns: calc((100% - 36px) / 3.4);
+  }
+  .ap-rail--rep {
+    grid-auto-columns: calc((100% - 36px) / 3.4);
+  }
+}
+@media (min-width: 960px) {
+  .ap-rail {
+    grid-auto-columns: calc((100% - 64px) / 5);
+    gap: 16px;
+    margin: 0 -8px;
+    padding: 6px 8px 18px;
+  }
+  .ap-rail--rep {
+    grid-auto-columns: calc((100% - 64px) / 5);
   }
 }

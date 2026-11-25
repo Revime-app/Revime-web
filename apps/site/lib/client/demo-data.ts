@@ -69,7 +69,7 @@ const demandes: DemandeListItem[] = [
     categoryLabelFr: 'Vélos',
     locationLabel: 'Villeurbanne',
     offerCount: 2,
-    photoUrl: null,
+    photoUrl: '/demo/velo.webp',
     quoteRequest: null,
     isPrivate: false,
     createdAt: ago(9),
@@ -88,7 +88,7 @@ const demandes: DemandeListItem[] = [
     categoryLabelFr: 'Petit électroménager',
     locationLabel: 'Lyon 7e',
     offerCount: 4,
-    photoUrl: null,
+    photoUrl: '/demo/cafetiere.webp',
     quoteRequest: null,
     isPrivate: false,
     createdAt: ago(40),
@@ -188,6 +188,24 @@ function detail(id: string): DemandeDto | undefined {
 }
 
 
+/** Demo-only pictures (public/demo), standing in for the photos clients and réparateurs upload. */
+const DEMO_PHOTOS: Record<string, string> = {
+  'pub-1': '/demo/ordinateur.webp',
+  'pub-2': '/demo/trottinette.webp',
+  'pub-3': '/demo/bottines.webp',
+  'pub-4': '/demo/manette.webp',
+  'pub-5': '/demo/montre.webp',
+  'pub-6': '/demo/chaise.webp',
+  'pub-7': '/demo/cafetiere.webp',
+  'pub-8': '/demo/velo.webp',
+};
+const DEMO_AVATARS: Record<string, string> = {
+  'demo-rep-2': '/demo/rep-karim.webp',
+  'demo-rep-4': '/demo/rep-cycles.webp',
+  'demo-rep-5': '/demo/rep-cordonnier.webp',
+  'demo-rep-6': '/demo/rep-sofia.webp',
+};
+
 const cid = (slug: string) => DEMO_CATEGORIES.find((c) => c.slug === slug)!;
 const pub = (
   id: string,
@@ -201,7 +219,7 @@ const pub = (
   id,
   title,
   description,
-  photos: [],
+  photos: DEMO_PHOTOS[id] ? [DEMO_PHOTOS[id]!] : [],
   category: { id: cid(slug).id, labelFr: cid(slug).labelFr },
   budgetCents,
   locationLabel,
@@ -235,7 +253,7 @@ const card = (
   verifiedBadge,
   rating,
   reviewCount,
-  avatarUrl: null,
+  avatarUrl: DEMO_AVATARS[userId] ?? null,
   distanceKm,
 });
 
