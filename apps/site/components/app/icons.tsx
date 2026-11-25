@@ -145,3 +145,16 @@ export const IconWrench = (p: P) => (
     <path d="M14.7 6.3a4 4 0 0 0-5.4 5.2L3.5 17.3a1.8 1.8 0 0 0 2.5 2.5l5.8-5.8a4 4 0 0 0 5.2-5.4l-2.4 2.4-2.1-.4-.4-2.1 2.6-2.2Z" />
   </Svg>
 );
+export const IconUserCheck = (p: P) => (
+  <Svg {...p}>
+    <circle cx="10" cy="8" r="4" />
+    <path d="M2.5 20a7.5 7.5 0 0 1 12.5-5.6M15.5 18l2 2 4-4" />
+  </Svg>
+);
+export const IconCompare = (p: P) => (
+  <Svg {...p}>
+    <rect x="3" y="4" width="7" height="16" rx="2" />
+    <rect x="14" y="4" width="7" height="16" rx="2" />
+    <path d="M6.5 9h0M17.5 9h0M5.5 13h2M16.5 13h2" />
+  </Svg>
+);

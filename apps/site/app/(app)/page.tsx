@@ -4,7 +4,7 @@ import { JsonLd, organizationJsonLd, websiteJsonLd } from '../../lib/jsonld';
 import { buildMetadata } from '../../lib/seo';
 import { SITE_TAGLINE } from '../../lib/site';
 import { CategoryIcon, FEATURED_CATEGORIES } from '../../components/app/categories';
-import { IconArrowRight, IconShieldCheck } from '../../components/app/icons';
+import { IconArrowRight, IconCompare, IconShieldCheck, IconUserCheck } from '../../components/app/icons';
 import { HomeHeroSearch, HomePersonal, RecentDemandes, TopRepairers } from './HomeIslands';
 
 export const metadata: Metadata = buildMetadata({
@@ -80,6 +80,33 @@ export default function HomePage() {
         </div>
       </section>
 
+      <section className="ap-section" aria-labelledby="h-why">
+        <h2 id="h-why">Ce que REVIME vous garantit</h2>
+        <ul className="ap-promises">
+          <li>
+            <span className="ap-promises__icon">
+              <IconShieldCheck size={24} />
+            </span>
+            <strong>Payé seulement quand c’est réparé</strong>
+            <span>Votre paiement reste bloqué jusqu’à ce que vous validiez la réparation. Sinon, vous êtes remboursé.</span>
+          </li>
+          <li>
+            <span className="ap-promises__icon">
+              <IconUserCheck size={24} />
+            </span>
+            <strong>Des réparateurs vérifiés</strong>
+            <span>Identité contrôlée pour tous, entreprise contrôlée pour les professionnels. Les avis viennent de vrais clients.</span>
+          </li>
+          <li>
+            <span className="ap-promises__icon">
+              <IconCompare size={24} />
+            </span>
+            <strong>Plusieurs offres, côte à côte</strong>
+            <span>Prix, délai, garantie et avis : vous comparez avant de choisir, sans engagement et sans frais pour demander.</span>
+          </li>
+        </ul>
+      </section>
+
       <section className="ap-section" aria-labelledby="h-how">
         <h2 id="h-how">Comment ça marche</h2>
         <ol className="ap-how">
@@ -98,13 +125,6 @@ export default function HomePage() {
         </ol>
       </section>
 
-      <div className="ap-trust">
-        <IconShieldCheck size={24} className="ap-trust__icon" />
-        <span>
-          <strong>Réparateurs vérifiés</strong>
-          <span>Identité et entreprise contrôlées. Ici, la réputation compte plus que le statut.</span>
-        </span>
-      </div>
     </div>
   );
 }

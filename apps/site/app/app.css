@@ -834,21 +834,87 @@
 }
 .ap-bigsearch {
   display: flex;
+  align-items: stretch;
+  gap: 0;
+  padding: 6px;
+  border-radius: 18px;
+  background: var(--white);
+  box-shadow: 0 1px 0 var(--line), 0 12px 32px rgba(16, 24, 40, 0.1);
+  color: var(--faint);
+  max-width: 640px;
+}
+.ap-bigsearch label {
+  display: flex;
   align-items: center;
   gap: 10px;
-  padding: 6px 6px 6px 16px;
-  border: 1.5px solid var(--line);
-  border-radius: var(--r-field);
-  background: var(--mist);
-  color: var(--faint);
-  max-width: 600px;
+  padding: 0 14px;
+  border-radius: 12px;
 }
-.ap-bigsearch:focus-within {
-  border-color: var(--ink);
+.ap-bigsearch label:focus-within {
+  background: var(--mist);
+}
+.ap-bigsearch__what {
+  flex: 1 1 auto;
+}
+.ap-bigsearch__where {
+  flex: 0 0 170px;
+  border-left: 1px solid var(--line);
+}
+.ap-popular {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+.ap-chip--sm {
+  padding: 6px 12px;
+  font-size: 13px;
   background: var(--white);
+}
+.ap-promises {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+}
+.ap-promises li {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 22px;
+  border-radius: var(--r-card);
+  background: var(--white);
+  box-shadow: var(--shadow);
+}
+.ap-promises__icon {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  margin-bottom: 6px;
+  border-radius: 14px;
+  background: var(--red-soft);
+  color: var(--red);
+}
+.ap-promises strong {
+  font-size: 16.5px;
+  color: var(--ink);
+}
+.ap-promises span:last-child {
+  color: var(--muted);
+  font-size: 14.5px;
+  line-height: 1.5;
+}
+@media (min-width: 720px) {
+  .ap-promises {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+  }
 }
 .ap-bigsearch input {
   flex: 1;
+  height: 48px;
   min-width: 0;
   border: 0;
   outline: 0;
@@ -1032,12 +1098,27 @@
 }
 /* On a phone the categories are the app's row of tiles: icon square, short label under it. */
 @media (max-width: 719px) {
-  .ap-hero__lede,
-  .ap-bigsearch .ap-btn {
+  .ap-hero__lede {
     display: none;
   }
   .ap-bigsearch {
-    padding: 14px 16px;
+    flex-wrap: wrap;
+  }
+  .ap-bigsearch label {
+    min-height: 48px;
+  }
+  .ap-bigsearch__what {
+    flex-basis: 100%;
+  }
+  .ap-bigsearch__where {
+    flex: 1 1 auto;
+    border-left: 0;
+    border-top: 1px solid var(--line);
+    border-radius: 0 0 0 12px;
+  }
+  .ap-bigsearch .ap-btn {
+    margin-top: 6px;
+    min-height: 44px;
   }
   .ap-cats {
     display: flex;
@@ -1169,7 +1250,7 @@
   inset: 0;
   display: grid;
   place-items: center;
-  color: #b7bdc9;
+  color: var(--faint);
 }
 .ap-tile__budget {
   position: absolute;
@@ -2130,7 +2211,7 @@
   font-weight: 700;
 }
 .ap-compare .is-chosen {
-  background: #f6f7fb;
+  background: var(--navy-soft, #f0f1f5);
 }
 .ap-compare thead th.is-chosen {
   border-top-color: var(--red);
@@ -2319,5 +2400,21 @@
   }
   .ap-rail--rep {
     grid-auto-columns: calc((100% - 64px) / 5);
+  }
+}
+.ap-bigsearch label,
+.ap-bigsearch input {
+  min-width: 0;
+}
+.ap-bigsearch__where {
+  flex: 0 1 150px;
+}
+.ap-bigsearch .ap-btn {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+@media (max-width: 719px) {
+  .ap-bigsearch .ap-btn {
+    flex-basis: 100%;
   }
 }

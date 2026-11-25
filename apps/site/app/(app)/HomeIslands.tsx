@@ -7,33 +7,64 @@ import type { DemandeListItem, DirectoryCardDto, PublicDemandeView } from '@revi
 import { useApi } from '../../lib/client/use-api';
 import { useSession } from '../../lib/client/session';
 import { DemandeTile, MyDemandeRow, RepairerCard } from '../../components/app/cards';
-import { IconSearch } from '../../components/app/icons';
+import { IconPin, IconSearch } from '../../components/app/icons';
 
-/** The hero's search: what is broken goes to the réparateurs who fix it. */
+const POPULAR = ['Écran cassé', 'Batterie', 'Trottinette', 'Lave-linge', 'Retouche', 'Ressemelage'];
+
+/**
+ * The hero's search, as on the big listing sites: what, then where, then go. Popular searches
+ * under it give a first-time visitor something to tap.
+ */
 export function HomeHeroSearch() {
   const router = useRouter();
   const [q, setQ] = useState('');
+  const [cp, setCp] = useState('');
+  const go = (what: string) => {
+    const qs = new URLSearchParams();
+    if (what.trim()) qs.set('q', what.trim());
+    if (/^\d{5}$/.test(cp)) qs.set('cp', cp);
+    router.push(qs.toString() ? `/reparateurs?${qs}` : '/reparateurs');
+  };
   return (
-    <form
-      role="search"
-      className="ap-bigsearch"
-      onSubmit={(e) => {
-        e.preventDefault();
-        router.push(q.trim() ? `/reparateurs?q=${encodeURIComponent(q.trim())}` : '/reparateurs');
-      }}
-    >
-      <IconSearch size={20} />
-      <input
-        aria-label="Que faut-il réparer ?"
-        placeholder="Écran d’iPhone, vélo, cafetière…"
-        value={q}
-        onChange={(e) => setQ(e.target.value)}
-      />
-      <button className="ap-btn ap-btn--dark">
-        <span className="ap-bigsearch__long">Trouver un réparateur</span>
-        <span className="ap-bigsearch__short">Trouver</span>
-      </button>
-    </form>
+    <div className="ap-bigsearch-wrap">
+      <form
+        role="search"
+        className="ap-bigsearch"
+        onSubmit={(e) => {
+          e.preventDefault();
+          go(q);
+        }}
+      >
+        <label className="ap-bigsearch__what">
+          <IconSearch size={20} />
+          <input
+            aria-label="Que faut-il réparer ?"
+            placeholder="Que faut-il réparer ?"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+          />
+        </label>
+        <label className="ap-bigsearch__where">
+          <IconPin size={18} />
+          <input
+            aria-label="Code postal"
+            placeholder="Code postal"
+            inputMode="numeric"
+            maxLength={5}
+            value={cp}
+            onChange={(e) => setCp(e.target.value.replace(/\D/g, ''))}
+          />
+        </label>
+        <button className="ap-btn ap-btn--primary">Rechercher</button>
+      </form>
+      <div className="ap-popular" aria-label="Recherches fréquentes">
+        {POPULAR.map((p) => (
+          <button key={p} type="button" className="ap-chip ap-chip--sm" onClick={() => go(p)}>
+            {p}
+          </button>
+        ))}
+      </div>
+    </div>
   );
 }
 
