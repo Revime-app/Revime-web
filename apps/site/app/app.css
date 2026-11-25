@@ -3369,3 +3369,259 @@ body {
 .ap-todo--pro a {
   color: var(--navy);
 }
+
+/* ---------- Paiement (web), same steps as the app's « Paiement sécurisé » ---------- */
+.ap-pay__head h1 {
+  margin: 8px 0 4px;
+  font-size: clamp(26px, 4vw, 34px);
+  color: var(--navy-deep);
+}
+.ap-pay__head .ap-muted {
+  margin: 0 0 20px;
+  font-size: 16px;
+}
+.ap-pay__grid {
+  display: grid;
+  gap: 20px;
+}
+@media (min-width: 960px) {
+  .ap-pay__grid {
+    grid-template-columns: minmax(0, 1fr) 400px;
+    align-items: start;
+  }
+  .ap-pay__aside {
+    position: sticky;
+    top: 96px;
+  }
+}
+.ap-payrep {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.ap-payrep > div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+.ap-payrep strong {
+  font-size: 17px;
+  color: var(--ink);
+}
+.ap-payrep__price {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--navy-deep);
+}
+.ap-choices {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.ap-choices legend {
+  padding: 0;
+  margin-bottom: 4px;
+}
+.ap-choices legend h2,
+.ap-pay .ap-box h2 {
+  margin: 0;
+  font-size: 19px;
+  color: var(--navy-deep);
+}
+.ap-choice {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-field);
+  background: var(--white);
+  cursor: pointer;
+}
+.ap-choice[data-active] {
+  border: 2px solid var(--red);
+  padding: 13px 15px;
+}
+.ap-choice input {
+  accent-color: var(--red);
+  width: 18px;
+  height: 18px;
+  margin: 0;
+}
+.ap-choice span {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+.ap-choice strong {
+  font-size: 16px;
+  color: var(--ink);
+}
+.ap-choice small {
+  font-size: 14px;
+  color: var(--muted);
+}
+.ap-choice b {
+  font-size: 15px;
+  color: var(--ink);
+}
+fieldset:disabled .ap-choice,
+fieldset:disabled .ap-check {
+  opacity: 0.6;
+  cursor: default;
+}
+.ap-fieldset-plain {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+.ap-check {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  margin: 12px 0 8px;
+  font-size: 16px;
+  line-height: 1.45;
+  color: var(--ink);
+  cursor: pointer;
+}
+.ap-check input {
+  width: 20px;
+  height: 20px;
+  margin: 2px 0 0;
+  flex: none;
+  accent-color: var(--navy);
+}
+.ap-link {
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--red-deep);
+  text-decoration: underline;
+  cursor: pointer;
+  text-align: left;
+}
+.ap-link--muted {
+  color: var(--muted);
+}
+.ap-sum {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.ap-sum__row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 15.5px;
+  color: var(--muted);
+}
+.ap-sum__row span:last-child {
+  font-weight: 600;
+  color: var(--ink);
+}
+.ap-sum__row a {
+  color: inherit;
+}
+.ap-sum__row--total {
+  margin-top: 6px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--ink);
+}
+.ap-testnotice {
+  padding: 16px 18px;
+  border-radius: var(--r-card);
+  border: 1.5px dashed var(--navy);
+  background: #f2f4f8;
+  color: var(--navy-deep);
+  font-size: 14.5px;
+}
+.ap-testnotice p {
+  margin: 4px 0 8px;
+}
+.ap-testnotice ul {
+  margin: 0;
+  padding-left: 18px;
+}
+.ap-testnotice code {
+  font-family: inherit;
+  font-weight: 700;
+}
+.ap-cardstub {
+  padding: 22px;
+  border-radius: var(--r-field);
+  border: 1.5px dashed var(--line);
+  color: var(--muted);
+  text-align: center;
+}
+.ap-btn--lg {
+  min-height: 56px;
+  font-size: 17px;
+}
+.ap-published h1 {
+  margin: 0 0 8px;
+  font-size: clamp(24px, 4vw, 30px);
+  color: #067647;
+}
+.ap-published--warn {
+  background: var(--red-soft);
+}
+.ap-published--warn h1 {
+  color: var(--red-deep);
+}
+.ap-isteps--compact {
+  list-style: decimal;
+}
+.ap-published .ap-isteps--compact li {
+  display: flex;
+  flex-direction: column;
+}
+.ap-published .ap-isteps--compact span {
+  font-size: 15px;
+  color: var(--text);
+}
+.ap-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 18px 0 12px;
+}
+fieldset.ap-choices {
+  border: 0;
+  min-width: 0;
+}
+.ap-choices legend {
+  float: left;
+  width: 100%;
+}
+.ap-choices legend + * {
+  clear: both;
+}
+.ap-pay .ap-hint {
+  display: block;
+  margin: 0;
+}
+.ap-pay__aside .ap-stack {
+  gap: 10px;
+}
+.ap-pay .ap-box--dark a {
+  color: inherit;
+  text-decoration: underline;
+}
+.ap-published .ap-isteps--compact li {
+  display: list-item;
+}
+.ap-published .ap-isteps--compact strong,
+.ap-published .ap-isteps--compact span {
+  display: block;
+}

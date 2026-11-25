@@ -7,7 +7,7 @@ import { protectionCentsFor, VERIFIED_BADGE_LABEL, type DemandeDto, type OfferDt
 import { useRequireSession } from '../../../../../lib/client/session';
 import { useApi } from '../../../../../lib/client/use-api';
 import { CategoryIcon, iconForLabel } from '../../../../../components/app/categories';
-import { IconClose, IconShieldCheck } from '../../../../../components/app/icons';
+import { IconShieldCheck } from '../../../../../components/app/icons';
 import { Badge, Loader, MACRO_STEPS, Stars, demandeStatus, euroFmt, initials, macroStep } from '../../../../../components/app/ui';
 
 const PARTS: Record<string, string> = {
@@ -175,7 +175,6 @@ function Detail({ id }: { id: string }) {
   const offers = useApi<OfferDto[]>(me ? `/demandes/${id}/offers` : null);
   const [sort, setSort] = useState<(typeof SORTS)[number]['key']>('prix');
   const [chosenId, setChosenId] = useState<string | null>(null);
-  const [paying, setPaying] = useState(false);
 
   if (!me || demande.loading) return <Loader />;
   if (!demande.data) {
@@ -323,30 +322,13 @@ function Detail({ id }: { id: string }) {
                 <span>dont Protection REVIME {euroFmt(fee)}</span>
               </p>
             </div>
-            <button className="ap-btn ap-btn--primary" onClick={() => setPaying(true)}>
+            <Link className="ap-btn ap-btn--primary" href={`/mes-demandes/${d.id}/paiement?offre=${chosen.id}`}>
               Payer
-            </button>
+            </Link>
           </div>
         </div>
       )}
 
-      {paying && chosen && (
-        <div className="ap-sheet" role="dialog" aria-modal="true" aria-labelledby="pay-title" onClick={() => setPaying(false)}>
-          <div className="ap-sheet__panel" onClick={(e) => e.stopPropagation()}>
-            <button className="ap-sheet__close" aria-label="Fermer" onClick={() => setPaying(false)}>
-              <IconClose size={18} />
-            </button>
-            <h2 id="pay-title">Le paiement arrive sur le site</h2>
-            <p className="ap-muted">
-              Pour l’instant, il se fait dans l’appli REVIME : ouvrez cette demande, choisissez l’offre de{' '}
-              {chosen.repairerName} et payez {euroFmt(chosen.priceCents + fee)}.
-            </p>
-            <button className="ap-btn ap-btn--secondary ap-btn--block" onClick={() => setPaying(false)}>
-              Compris
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

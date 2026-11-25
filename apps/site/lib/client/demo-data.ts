@@ -433,5 +433,8 @@ export async function demoPost<T>(path: string, body: unknown): Promise<T> {
     demandes.unshift(created);
     return detail(created.id) as T;
   }
+  if (/^\/offers\/[^/]+\/checkout$/.test(path)) {
+    return { paymentIntentClientSecret: 'demo', commandeId: '00000000-0000-4000-8000-000000000001', isTestMode: true } as T;
+  }
   throw new Error(`Demo: ${path} is not available in demo mode`);
 }

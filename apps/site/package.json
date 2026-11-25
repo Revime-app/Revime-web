@@ -12,6 +12,8 @@
   "dependencies": {
     "@revime/shared": "*",
     "@revime/tokens": "*",
+    "@stripe/react-stripe-js": "^3.11.0",
+    "@stripe/stripe-js": "^7.10.0",
     "better-auth": "^1.6.25",
     "next": "16.2.12",
     "react": "19.2.3",
